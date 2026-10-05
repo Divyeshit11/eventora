@@ -1,26 +1,17 @@
 import Hero from "./Components/layout/Hero";
 import Navbar from "./Components/layout/Navbar";
+import FeaturedEvents from "./Components/layout/FeaturedEvents";  
+import { events } from "./data/events";
 
 function App() {
   return (
-    <main className="min-h-screen bg-slate-950 text-white flex items-center justify-center">
-      <Navbar/>
-      <Hero/>
-      <div className="text-center">
-        <h1 className="text-6xl font-bold">
-          Eventora
-        </h1>
+    <div className="min-h-screen bg-slate-950 text-white">
+      <Navbar />
+      <Hero />
 
-        <p className="mt-4 text-slate-400">
-          Discover. Book. Experience.
-        </p>
-
-        <button className="mt-8 rounded-lg bg-indigo-600 px-6 py-3 font-medium transition hover:bg-indigo-500">
-          Explore Events
-        </button>
-      </div>
-    </main>
-  )
+      <FeaturedEvents events={events} />
+    </div>
+  );
 }
 
-export default App
+export default App;
