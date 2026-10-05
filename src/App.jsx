@@ -1,9 +1,11 @@
-import Navbar from "./Components/Navbar";
+import Hero from "./Components/layout/Hero";
+import Navbar from "./Components/layout/Navbar";
 
 function App() {
   return (
     <main className="min-h-screen bg-slate-950 text-white flex items-center justify-center">
       <Navbar/>
+      <Hero/>
       <div className="text-center">
         <h1 className="text-6xl font-bold">
           Eventora
