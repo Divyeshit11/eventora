@@ -1,25 +1,45 @@
 
 import { useState } from 'react'
 import EventGrid from './EventGrid'
-import Eventfilters from './Eventfilter'
+import EventFilters from './Eventfilters'
 
 function FeaturedEvents({ events }) {
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedCategory, setSelectedCategory] = useState('all')
+  const [maxPrice, setMaxPrice] = useState(5000)
+  const [sortBy, setSortBy] = useState('default')
 
-  const filteredEvents = events.filter((event) => {
-    const searchText = searchTerm.trim().toLowerCase()
+  const filteredEvents = events
+    .filter((event) => {
+      const searchText = searchTerm.trim().toLowerCase()
 
-    const matchesSearch =
-      event.title.toLowerCase().includes(searchText) ||
-      event.location.toLowerCase().includes(searchText)
+      const matchesSearch =
+        event.title.toLowerCase().includes(searchText) ||
+        event.location.toLowerCase().includes(searchText)
 
-    const matchesCategory =
-      selectedCategory === 'all' ||
-      event.category === selectedCategory
+      const matchesCategory =
+        selectedCategory === 'all' ||
+        event.category === selectedCategory
 
-    return matchesSearch && matchesCategory
-  })
+      const matchesPrice = event.price <= maxPrice
+
+      return matchesSearch && matchesCategory && matchesPrice
+    })
+    .sort((a, b) => {
+      switch (sortBy) {
+        case 'price-low':
+          return a.price - b.price
+
+        case 'price-high':
+          return b.price - a.price
+
+        case 'title':
+          return a.title.localeCompare(b.title)
+
+        default:
+          return 0
+      }
+    })
 
   return (
     <section
@@ -40,12 +60,21 @@ function FeaturedEvents({ events }) {
         </p>
       </div>
 
-      <Eventfilters
+      <EventFilters
         searchTerm={searchTerm}
         onSearchChange={setSearchTerm}
         selectedCategory={selectedCategory}
         onCategoryChange={setSelectedCategory}
+        maxPrice={maxPrice}
+        onMaxPriceChange={setMaxPrice}
+        sortBy={sortBy}
+        onSortChange={setSortBy}
       />
+
+      <p className="mb-5 text-sm text-slate-400" aria-live="polite">
+        {filteredEvents.length}{' '}
+        {filteredEvents.length === 1 ? 'event' : 'events'} found
+      </p>
 
       {filteredEvents.length > 0 ? (
         <EventGrid events={filteredEvents} />
@@ -56,8 +85,21 @@ function FeaturedEvents({ events }) {
           </h3>
 
           <p className="mt-2 text-slate-400">
-            Try another search term or category.
+            Try changing your search, category, or price.
           </p>
+
+          <button
+            type="button"
+            onClick={() => {
+              setSearchTerm('')
+              setSelectedCategory('all')
+              setMaxPrice(5000)
+              setSortBy('default')
+            }}
+            className="mt-5 rounded-lg bg-brand-600 px-4 py-2 font-medium text-white hover:bg-brand-700"
+          >
+            Reset Filters
+          </button>
         </div>
       )}
     </section>
