@@ -3,7 +3,9 @@ import categories from '../../data/categories'
 
 function CategorySection({ onCategorySelect }) {
   return (
-    <section className="mx-auto max-w-7xl px-4 py-12 sm:px-6">
+    <section
+    id="categories" 
+    className="mx-auto max-w-7xl px-4 py-12 sm:px-6">
       <div className="mb-7">
         <p className="text-sm font-semibold uppercase tracking-wider text-brand-500">
           Browse by interest
