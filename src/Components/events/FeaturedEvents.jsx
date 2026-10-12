@@ -3,12 +3,16 @@ import { useState } from 'react'
 import EventGrid from './EventGrid'
 import EventFilters from './Eventfilters'
 
-function FeaturedEvents({ events }) {
+function FeaturedEvents({
+  events,
+  selectedCategory,
+  onCategoryChange,
+}) {
   const [searchTerm, setSearchTerm] = useState('')
-  const [selectedCategory, setSelectedCategory] = useState('all')
   const [maxPrice, setMaxPrice] = useState(5000)
   const [sortBy, setSortBy] = useState('default')
 
+  // Step 1: Filter events using search, category, and price.
   const filteredEvents = events
     .filter((event) => {
       const searchText = searchTerm.trim().toLowerCase()
@@ -25,6 +29,8 @@ function FeaturedEvents({ events }) {
 
       return matchesSearch && matchesCategory && matchesPrice
     })
+
+    // Step 2: Sort the filtered events.
     .sort((a, b) => {
       switch (sortBy) {
         case 'price-low':
@@ -40,6 +46,14 @@ function FeaturedEvents({ events }) {
           return 0
       }
     })
+
+  // Step 3: Reset all filters.
+  function handleResetFilters() {
+    setSearchTerm('')
+    onCategoryChange('all')
+    setMaxPrice(5000)
+    setSortBy('default')
+  }
 
   return (
     <section
@@ -64,14 +78,17 @@ function FeaturedEvents({ events }) {
         searchTerm={searchTerm}
         onSearchChange={setSearchTerm}
         selectedCategory={selectedCategory}
-        onCategoryChange={setSelectedCategory}
+        onCategoryChange={onCategoryChange}
         maxPrice={maxPrice}
         onMaxPriceChange={setMaxPrice}
         sortBy={sortBy}
         onSortChange={setSortBy}
       />
 
-      <p className="mb-5 text-sm text-slate-400" aria-live="polite">
+      <p
+        className="mb-5 text-sm text-slate-400"
+        aria-live="polite"
+      >
         {filteredEvents.length}{' '}
         {filteredEvents.length === 1 ? 'event' : 'events'} found
       </p>
@@ -90,13 +107,8 @@ function FeaturedEvents({ events }) {
 
           <button
             type="button"
-            onClick={() => {
-              setSearchTerm('')
-              setSelectedCategory('all')
-              setMaxPrice(5000)
-              setSortBy('default')
-            }}
-            className="mt-5 rounded-lg bg-brand-600 px-4 py-2 font-medium text-white hover:bg-brand-700"
+            onClick={handleResetFilters}
+            className="mt-5 rounded-lg bg-brand-600 px-4 py-2 font-medium text-white transition hover:bg-brand-700"
           >
             Reset Filters
           </button>
