@@ -1,6 +1,10 @@
 
+import { Link } from 'react-router';
 import Badge from '../common/Badge';
 import Button from '../common/Button';
+import { useDispatch, useSelector } from 'react-redux'
+import { toggleFavorite } from '../../features/events/eventsSlice'
+import { selectFavoriteIds } from '../../features/events/eventsSelectors'
 
 const categoryVariants = {
   Technology: 'technology',
@@ -13,6 +17,13 @@ function EventCard({ event }) {
   if (!event) {
     return null;
   }
+
+  const dispatch = useDispatch()
+  const favoriteIds = useSelector(selectFavoriteIds)
+
+  const isFavorite = favoriteIds.some(
+    (id) => String(id) === String(event.id)
+  )
 
   const categoryVariant =
     categoryVariants[event.category] ?? 'technology';
@@ -39,6 +50,24 @@ function EventCard({ event }) {
           {event.title}
         </h3>
 
+        <button
+        type="button"
+        onClick={() => dispatch(toggleFavorite(event.id))}
+        aria-pressed={isFavorite}
+        aria-label={
+          isFavorite
+          ? `Remove ${event.title} from favorites`
+          : `Add ${event.title} to favorites`
+        }
+        className={`rounded-lg border px-3 py-2 text-sm transition ${isFavorite
+          ? 'border-pink-500 bg-pink-500/10 text-pink-400'
+          : 'border-surface-border text-slate-300 hover:text-pink-400'
+        }`}
+        >
+          {isFavorite ? '♥ Saved' : '♡ Favorite'}
+
+        </button>
+
         <div className="mt-3 space-y-2 text-sm text-slate-400">
           <p>📍 {event.location}</p>
           <p>📅 {event.date}</p>
@@ -53,8 +82,10 @@ function EventCard({ event }) {
               ₹{event.price}
             </p>
           </div>
-
+<Link to={`/events/${event.id}`} className='block'>
           <Button>View Event</Button>
+
+</Link>
         </div>
       </div>
     </article>

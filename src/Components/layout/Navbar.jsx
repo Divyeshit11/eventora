@@ -1,66 +1,88 @@
-import { useState } from "react";
-import navigationItems from "../../data/navigation";
-import Button from "../common/Button";
+import { useState } from "react"
+import { Link, NavLink } from "react-router"
+import Button from "../common/Button"
 
+const navigation = [
+    { label: 'Home', to: '/' },
+    { label: 'Explore Events', to: '/events' },
+    { label: 'Favorites', to: '/favorites' },
+
+]
 function Navbar() {
     const [isMenuOpen, setIsMenuOpen] = useState(false)
+
+    const getLinkClass = ({ isActive }) =>
+        `text-sm font-medium transition-colors ${isActive
+            ? 'text-white'
+            : 'text-slate-400 hover:text-white'
+        }`
 
     return (
         <header className="sticky top-0 z-50 border-b border-surface-border bg-surface/95 backdrop-blur">
             <nav className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 sm:px-6">
-                <a href="/" className="text-2xl font-bold text-white">
-                Eventora <span className="text-brand-500">.</span>
-                </a>
-
-                <div className="hidden items-center gap-7 md:flex">
-                    {navigationItems.map((item)=>(
-                        <a
-                        key={item.href}
-                        href={item.href}
-                        className="text-sm text-slate-300 transition hover:text-white"
+                <Link
+                    to="/"
+                    className="text-2xl font-extrabold tracking-tight text-white"
+                    onClick={() => setIsMenuOpen(false)}
+                >
+                    Eventora <span className="text-brand-500">.</span>
+                </Link>
+                {/* Desktop Navigation */}
+                <div className="hidden items-center gap-8 md:flex">
+                    {navigation.map((item) => (
+                        <NavLink
+                            key={item.to}
+                            to={item.to}
+                            end={item.to === '/'}
+                            className={getLinkClass}
                         >
                             {item.label}
-                        </a>
+                        </NavLink>
                     ))}
                 </div>
+{/* Desktop Action */}
                 <div className="hidden md:block">
-                    <Button onClick={() => window.alert('Login will be implemented later.')}>
-                        Login
-                    </Button>
-
+                    <Link to="/events">
+                        <Button>Explore Events</Button>
+                    </Link>
                 </div>
-
                 <button
-                type="button"
-                className="rounded-lg border border-surface-border p-2 text-white md:hidden"
-                aria-label={isMenuOpen ? 'Close menu': 'Open menu'}
-                aria-expanded={isMenuOpen}
-                onClick={()=>setIsMenuOpen((previous)=> !previous)}
+                    type="button"
+                    className="rounded-lg border border-surface-border px-3 py-2 text-white md:hidden"
+                    aria-label={isMenuOpen ? 'Close menu' : 'Open menu'}
+                    aria-expanded={isMenuOpen}
+                    onClick={() => setIsMenuOpen((open) => !open)}
                 >
-                    {isMenuOpen ? 'x' : '☰'}
-                    </button>
+                    {isMenuOpen ? '✕' : '☰'}
+                </button>
             </nav>
-{isMenuOpen && (
-    <div className="border-t border-surface-border px-4 py-4 md:hidden">
-        <div className="flex flex-col gap-4">
-            {navigationItems.map((item)=>(
-                <a
-                key={item.href}
-                href={item.href}
-                className="text-sm text-slate-300 hover:text-white"
-                onClick={() => setIsMenuOpen(false)}
-                >
-                    {item.label}
-                </a>
-            ))}
 
-        </div>
+            {isMenuOpen && (
+                <div className="border-t border-surface-border px-4 py-4 md:hidden">
+                    <div className="flex flex-col gap-4">
+                        {navigation.map((item) => (
+                            <NavLink
+                                key={item.to}
+                                to={item.to}
+                                end={item.to === '/'}
+                                className={getLinkClass}
+                                onClick={() => setIsMenuOpen(false)}>
+                                {item.label}
+                            </NavLink>
+                        ))}
 
-    </div>
-)}
-
+                        <Link
+                            to="/events"
+                            onClick={() => setIsMenuOpen(false)}
+                        >
+                            <Button>Explore Events</Button>
+                        </Link>
+                    </div>
+                </div>
+            )}
 
         </header>
     )
 }
+
 export default Navbar

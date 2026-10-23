@@ -3,6 +3,7 @@ const navigationItems = [
     {label: 'Explore Events',href:'/events'},
     {label: 'Categories', href: '/categories'},
     {label: 'About', href: '/about'},
+    {label: 'Favorites', path: '/favorites'},
 ]
 
 export default navigationItems  
