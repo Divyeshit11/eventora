@@ -1,5 +1,5 @@
 
-import { Schema, model } from 'mongoose'
+const { Schema, model } = require('mongoose')
 
 const eventSchema = new Schema(
   {
@@ -63,4 +63,4 @@ const eventSchema = new Schema(
   }
 )
 
-export default model('Event', eventSchema)
+module.exports = model('Event', eventSchema)

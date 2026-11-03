@@ -12,4 +12,4 @@ SECRETS_SCAN_OMIT_KEYS = "NODE_ENV"
 
 [functions]
   directory = "netlify/functions"
-  node_bundler = "zisi"
+  node_bundler = "esbuild"
