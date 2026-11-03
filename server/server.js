@@ -103,12 +103,27 @@ app.use((error, req, res, next) => {
     })
 })
 
+let initializationPromise
+
+function initializeApp() {
+    if (!initializationPromise) {
+        initializationPromise = (async () => {
+            validateProductionConfiguration()
+            getJwtSecret()
+            await connectDB()
+            await bootstrapAdmin()
+        })().catch((error) => {
+            // Allow a later serverless invocation to retry a transient startup failure.
+            initializationPromise = undefined
+            throw error
+        })
+    }
+    return initializationPromise
+}
+
 async function startServer() {
     try {
-        validateProductionConfiguration()
-        getJwtSecret()
-        await connectDB()
-        await bootstrapAdmin()
+        await initializeApp()
 
         app.listen(PORT, () => {
             console.log(`Eventora API running on port ${PORT}`)
@@ -123,4 +138,9 @@ if (require.main === module) {
     startServer()
 }
 
-module.exports = { app, startServer }
+// Export the Express app itself so hosts such as Vercel can invoke it as a
+// serverless function. Named properties preserve the local test/start API.
+module.exports = app
+module.exports.app = app
+module.exports.startServer = startServer
+module.exports.initializeApp = initializeApp

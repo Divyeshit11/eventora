@@ -1,7 +1,11 @@
 [build]
   # Netlify must publish Vite's production output, never the source directory.
-  command = "npm run build"
+  command = "npm ci && npm --prefix server ci && npm run build"
   publish = "dist"
 
 [build.environment]
 NODE_VERSION = "22"
+
+[functions]
+  directory = "netlify/functions"
+  node_bundler = "zisi"
