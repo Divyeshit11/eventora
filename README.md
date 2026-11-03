@@ -47,7 +47,7 @@ fields.
   **Blueprint**, select this repository, and enter the required values for
   `MONGODB_URI`, `CLIENT_URL`, `ADMIN_EMAIL`, and `ADMIN_PASSWORD`. Set
   `CLIENT_URL` to the exact Netlify URL, for example
-  `https://legendary-centaur-bddaf2.netlify.app`. After it deploys, open
+  `https://your-site.netlify.app`. After it deploys, open
   `https://<your-render-service>.onrender.com/api/health`; it must return JSON
   before proceeding.
 - Netlify is configured by [netlify.toml](./netlify.toml) to build with

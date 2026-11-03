@@ -7,6 +7,8 @@
 
 [build.environment]
 NODE_VERSION = "22"
+# NODE_ENV is a non-secret setting whose common value is otherwise flagged in source.
+SECRETS_SCAN_OMIT_KEYS = "NODE_ENV"
 
 [functions]
   directory = "netlify/functions"
