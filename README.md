@@ -42,8 +42,14 @@ fields.
 
 ## Production setup
 
-- Build the frontend with `npm run build`; configure `VITE_API_URL` in the
-  frontend host to the deployed API base URL ending in `/api`.
+- Netlify is configured by [netlify.toml](./netlify.toml) to build with
+  `npm run build` and publish `dist`. Connect the repository at its project
+  root, then trigger a fresh deployment (clear the build cache if an older
+  deployment published the wrong files).
+- Configure `VITE_API_URL` in Netlify's frontend environment variables to the
+  deployed API base URL ending in `/api`; do not use a localhost URL for a
+  deployed site. Backend secrets and `MONGODB_URI` belong only in the API
+  host's environment variables, never in the frontend.
 - The included `public/_redirects` routes Netlify page requests to the React
   entry point so event detail URLs can be refreshed directly.
 - Configure the backend host with `PORT`, `MONGODB_URI` (MongoDB Atlas), and
