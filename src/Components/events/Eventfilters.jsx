@@ -21,7 +21,11 @@ function Eventfilters({
                 className="w-full rounded-xl border border-surface-border bg-surface-card px-4 py-3 text-white outline-none placeholder:text-slate-500 focus:border-brand-500 sm:max-w-md" />
 
             <div className="flex flex-wrap gap-3">
-                {categories.map((category) => (
+                {[
+                    { id: 'all', label: 'All' },
+                    ...categories,
+                    { id: 'Other', label: 'Other' },
+                ].map((category) => (
                     <button
                         key={category.id}
                         type="button"
@@ -40,7 +44,7 @@ function Eventfilters({
                     <label htmlFor="max-price"
                         className="mb-2 block text-sm text-slate-300"
                     >
-                        Maximum ticket price: ${maxPrice}
+                        Maximum ticket price: ₹{maxPrice}
                     </label>
 
                     <input

@@ -2,9 +2,11 @@
 import { Link } from 'react-router';
 import Badge from '../common/Badge';
 import Button from '../common/Button';
+import EventImage from '../common/EventImage'
 import { useDispatch, useSelector } from 'react-redux'
 import { toggleFavorite } from '../../features/events/eventsSlice'
 import { selectFavoriteIds } from '../../features/events/eventsSelectors'
+import { getEventId } from '../../utils/eventIdentity'
 
 const categoryVariants = {
   Technology: 'technology',
@@ -14,15 +16,16 @@ const categoryVariants = {
 };
 
 function EventCard({ event }) {
-  if (!event) {
-    return null;
-  }
-
   const dispatch = useDispatch()
   const favoriteIds = useSelector(selectFavoriteIds)
+  const eventId = getEventId(event)
+
+  if (!event) {
+    return null
+  }
 
   const isFavorite = favoriteIds.some(
-    (id) => String(id) === String(event.id)
+    (id) => String(id) === String(eventId)
   )
 
   const categoryVariant =
@@ -31,7 +34,7 @@ function EventCard({ event }) {
   return (
     <article className="group overflow-hidden rounded-2xl border border-surface-border bg-surface-card transition duration-300 hover:-translate-y-1 hover:border-brand-500/60">
       <div className="relative overflow-hidden">
-        <img
+        <EventImage
           src={event.image}
           alt={event.title}
           loading="lazy"
@@ -52,7 +55,7 @@ function EventCard({ event }) {
 
         <button
         type="button"
-        onClick={() => dispatch(toggleFavorite(event.id))}
+        onClick={() => dispatch(toggleFavorite(eventId))}
         aria-pressed={isFavorite}
         aria-label={
           isFavorite
@@ -82,7 +85,7 @@ function EventCard({ event }) {
               ₹{event.price}
             </p>
           </div>
-<Link to={`/events/${event.id}`} className='block'>
+<Link to={`/events/${eventId}`} className='block'>
           <Button>View Event</Button>
 
 </Link>

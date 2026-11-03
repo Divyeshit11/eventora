@@ -6,6 +6,7 @@ const navigation = [
     { label: 'Home', to: '/' },
     { label: 'Explore Events', to: '/events' },
     { label: 'Favorites', to: '/favorites' },
+    { label: 'Event Manager', to: '/manage-events' },
 
 ]
 function Navbar() {

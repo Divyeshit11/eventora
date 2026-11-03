@@ -5,9 +5,13 @@ import Navbar from '../Components/layout/Navbar'
 import Footer from '../Components/layout/Footer'
 import { selectFavoriteEvents } from '../features/events/eventsSelectors'
 import { toggleFavorite } from '../features/events/eventsSlice'
+import EventImage from '../Components/common/EventImage'
+import { getEventId } from '../utils/eventIdentity'
 
 function FavoritesPage() {
   const favoriteEvents = useSelector(selectFavoriteEvents)
+  const eventsStatus = useSelector((state) => state.events.status)
+  const eventsError = useSelector((state) => state.events.error)
   const dispatch = useDispatch()
 
   return (
@@ -27,14 +31,22 @@ function FavoritesPage() {
           Events you've saved for later.
         </p>
 
-        {favoriteEvents.length > 0 ? (
+        {eventsStatus === 'failed' ? (
+          <p className="mt-8 rounded-xl border border-red-800 bg-red-950/30 p-5 text-red-300" role="alert">
+            {eventsError || 'Unable to load your saved events.'}
+          </p>
+        ) : eventsStatus === 'idle' || eventsStatus === 'loading' ? (
+          <p className="mt-8 py-12 text-center text-slate-400" role="status">
+            Loading favorites...
+          </p>
+        ) : favoriteEvents.length > 0 ? (
           <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {favoriteEvents.map((event) => (
               <article
-                key={event.id}
+                key={getEventId(event)}
                 className="overflow-hidden rounded-2xl border border-surface-border bg-surface-card"
               >
-                <img
+                <EventImage
                   src={event.image}
                   alt={event.title}
                   className="h-48 w-full object-cover"
@@ -58,7 +70,7 @@ function FavoritesPage() {
                   </p>
 
                   <Link
-                    to={`/events/${event.id}`}
+                    to={`/events/${getEventId(event)}`}
                     className="mt-4 inline-block rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700"
                   >
                     View Event
@@ -66,7 +78,7 @@ function FavoritesPage() {
 
                   <button
                     type="button"
-                    onClick={() => dispatch(toggleFavorite(event.id))}
+                    onClick={() => dispatch(toggleFavorite(getEventId(event)))}
                     className="mt-3 rounded-lg border border-pink-500/50 px-4 py-2 text-sm font-semibold text-pink-400 transition hover:bg-pink-500/10"
                   >
                     ♥ Remove Favorite

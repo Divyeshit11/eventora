@@ -1,4 +1,5 @@
 import { createSelector } from '@reduxjs/toolkit'
+import { getEventId } from '../../utils/eventIdentity'
 
 export const selectAllEvents = (state) => state.events.items
 
@@ -7,7 +8,7 @@ export const selectEventCount = (state) =>
 
 export const selectEventById = (state, eventId) =>
     state.events.items.find(
-        (event) => String(event.id) === String(eventId)
+        (event) => String(getEventId(event)) === String(eventId)
     )
 
 export const selectFavoriteIds = (state) =>
@@ -17,6 +18,6 @@ export const selectFavoriteEvents = createSelector(
     [selectAllEvents, selectFavoriteIds],
     (items, favorites) =>
         items.filter((event) =>
-            favorites.some((id) => String(id) === String(event.id))
+            favorites.some((id) => String(id) === String(getEventId(event)))
         )
 )

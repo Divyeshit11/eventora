@@ -1,16 +1,71 @@
-# React + Vite
+# Eventora
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Eventora is a React/Vite event discovery and management application backed by an
+Express API and MongoDB.
 
-Currently, two official plugins are available:
+## Local development
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+1. Install frontend dependencies with `npm install` in this directory.
+2. Copy `server/.env.example` to `server/.env` and set `MONGODB_URI` to a local
+   MongoDB database. Also set a unique `JWT_SECRET` (at least 32 characters),
+   `ADMIN_EMAIL`, and a unique `ADMIN_PASSWORD` (at least 12 characters).
+3. Copy `.env.example` to `.env` if the API is not at the default
+   `http://localhost:5000/api`.
+4. Start the API with `cd server && npm install && npm run dev`.
+5. Start the frontend in a second terminal with `npm run dev`.
 
-## React Compiler
+The API defaults to port `5000`; `CLIENT_URL` accepts a comma-separated list of
+allowed browser origins. The first configured administrator is created on server
+startup if the account does not exist; its password is not reset on later
+starts. Public registration creates ordinary users only. Only administrators
+may create, update, delete, import, or export events. Do not commit environment
+files or credentials.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Event API
 
-## Expanding the ESLint configuration
+- `GET /api/events` supports `page`, `limit` (maximum 100), `search`, `category`,
+  `maxPrice`, and `sort`.
+- `GET /api/events/:id`, `POST /api/events`, `PUT /api/events/:id`, and
+  `DELETE /api/events/:id` provide event CRUD.
+- `POST /api/events/import-csv` accepts CSV files in the `files` multipart field.
+  Each file is limited to 10 MB, and up to five files can be submitted at once.
+- `GET /api/events/export-csv` downloads the supported import columns.
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+CSV imports accept the required `title`, `category`, `location`, `date`, and
+`price` headers. `image` and `description` are optional. Rows with invalid data
+or duplicate event identity (case-insensitive title, location, date, and price)
+are reported; valid rows in the same file are still imported. Duplicate checks
+compare against the current collection and each active import. They are not a
+database uniqueness constraint, so simultaneous imports can still race; the
+identity also intentionally permits events that differ in any of those four
+fields.
+
+## Production setup
+
+- Build the frontend with `npm run build`; configure `VITE_API_URL` in the
+  frontend host to the deployed API base URL ending in `/api`.
+- The included `public/_redirects` routes Netlify page requests to the React
+  entry point so event detail URLs can be refreshed directly.
+- Configure the backend host with `PORT`, `MONGODB_URI` (MongoDB Atlas), and
+  `CLIENT_URL` (the deployed frontend origin), `JWT_SECRET`, `ADMIN_EMAIL`, and
+  `ADMIN_PASSWORD`. Set `TRUST_PROXY=true` only if the host sits behind its
+  documented trusted reverse proxy and set `TRUST_PROXY_HOPS` to the verified
+  proxy hop count (1–5). Production `CLIENT_URL` entries must be HTTPS origins.
+  Restrict Atlas network access to the backend host and use a least-privilege
+  database user.
+- Deployment is not automatic. Configure the hosting dashboards and verify the
+  live integration before considering the application production-ready.
+
+## Project planning and release status
+
+- [PROJECT_MASTER_PLAN.md](./PROJECT_MASTER_PLAN.md) — original 13-phase scope.
+- [PROJECT_STATUS.md](./PROJECT_STATUS.md) — implementation and executed-check
+  evidence.
+- [REMAINING_TASKS.md](./REMAINING_TASKS.md) — local verification and external
+  setup still required.
+- [DEPLOYMENT_READINESS.md](./DEPLOYMENT_READINESS.md) — production setup gates
+  and deployment sequence.
+- [PRODUCTION_ACCEPTANCE_CHECKLIST.md](./PRODUCTION_ACCEPTANCE_CHECKLIST.md) —
+  checks to run against the deployed services.
+- [DEVELOPMENT_PROGRESS_LOG.md](./DEVELOPMENT_PROGRESS_LOG.md) — dated
+  consolidated progress.
