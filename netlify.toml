@@ -1,6 +1,8 @@
 [build]
   # Netlify must publish Vite's production output, never the source directory.
-  command = "npm ci && npm --prefix server ci && npm run build"
+  # NODE_ENV=production is needed by the API function, but Vite and its React
+  # plugin are devDependencies and must be present while Netlify builds.
+  command = "npm ci --include=dev && npm --prefix server ci && npm run build"
   publish = "dist"
 
 [build.environment]
