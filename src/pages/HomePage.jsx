@@ -1,19 +1,29 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Navbar from "../Components/layout/Navbar";
 import Hero from "../Components/layout/Hero";
 import CategorySection from "../Components/events/CategorySection";
 import FeaturedEvents from "../Components/events/FeaturedEvents";
 import Footer from "../Components/layout/Footer";
-import { useSelector } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
+import { fetchEvents } from "../features/events/eventsSlice";
 
 function HomePage() {
+    const dispatch = useDispatch()
     const [selectedCategory, setSelectedCategory] = useState('all')
     const events = useSelector((state)=>state.events.items)
     const eventStatus = useSelector((state) => state.events.status)
     const eventError = useSelector((state) => state.events.error)
-    const featuredEvents = selectedCategory === 'all'
-        ? events
-        : events.filter((event) => event.category === selectedCategory)
+    const pagination = useSelector((state) => state.events.pagination)
+
+    useEffect(() => {
+        const controller = new AbortController()
+        dispatch(fetchEvents({
+            page: 1,
+            limit: 9,
+            ...(selectedCategory !== 'all' && { category: selectedCategory }),
+        }, { signal: controller.signal }))
+        return () => controller.abort()
+    }, [dispatch, selectedCategory])
 
 
     function handleCategorySelect(categoryId) {
@@ -31,8 +41,8 @@ function HomePage() {
             onCategorySelect={handleCategorySelect}/>
 
             <FeaturedEvents
-            events={featuredEvents}
-            pagination={{ totalEvents: featuredEvents.length, totalPages: 0 }}
+            events={events}
+            pagination={{ totalEvents: pagination?.totalEvents ?? events.length, totalPages: 0 }}
             currentPage={1}
             selectedCategory={selectedCategory}
             onCategoryChange={setSelectedCategory}

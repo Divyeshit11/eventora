@@ -1,4 +1,4 @@
-const { parse } = require('csv-parse/sync')
+const { parse: parseCsv } = require('csv-parse')
 const mongoose = require('mongoose')
 const Event = require('../models/Event')
 
@@ -13,7 +13,7 @@ const EVENT_FIELDS = [
 ]
 const CATEGORIES = ['Technology', 'Music', 'Business', 'Comedy', 'Other']
 const REQUIRED_CSV_HEADERS = ['title', 'category', 'location', 'date', 'price']
-const INSERT_CHUNK_SIZE = 100
+const INSERT_CHUNK_SIZE = 500
 
 function getEventPayload(body) {
     if (!body || typeof body !== 'object' || Array.isArray(body)) return null
@@ -31,6 +31,11 @@ function normalizedDuplicateKey(event) {
         event.date,
         Number(event.price),
     ].map((value) => String(value ?? '').trim().toLowerCase()))
+}
+
+function exactCaseInsensitive(value) {
+    const escapedValue = String(value ?? '').trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    return new RegExp(`^${escapedValue}$`, 'i')
 }
 
 function sendBadRequest(res, message) {
@@ -142,6 +147,19 @@ async function createEvent(req, res) {
         const payload = getEventPayload(req.body)
         if (!payload) return sendBadRequest(res, 'Event data must be a JSON object')
 
+        const duplicate = await Event.findOne({
+            title: exactCaseInsensitive(payload.title),
+            location: exactCaseInsensitive(payload.location),
+            date: payload.date,
+            price: Number(payload.price),
+        })
+        if (duplicate) {
+            return res.status(409).json({
+                success: false,
+                message: 'This event already exists (title, location, date, and price match)',
+            })
+        }
+
         const event = await Event.create(payload)
         return res.status(201).json({
             success: true,
@@ -151,6 +169,12 @@ async function createEvent(req, res) {
     } catch (error) {
         if (error.name === 'ValidationError' || error.name === 'CastError') {
             return sendBadRequest(res, error.message)
+        }
+        if (error.code === 11000) {
+            return res.status(409).json({
+                success: false,
+                message: 'This event already exists (title, location, date, and price match)',
+            })
         }
         console.error('Failed to create event:', error.message)
         return res.status(500).json({
@@ -278,11 +302,12 @@ function mapCsvRow(row) {
 async function parseCsvFile(file, existingKeys, uploadedKeys, onProgress) {
     let headers = []
     let duplicateHeaders = []
-    const records = parse(file.buffer.toString('utf8'), {
+    const parser = parseCsv(file.buffer, {
         bom: true,
         skip_empty_lines: false,
         trim: true,
         relax_column_count: true,
+        info: true,
         columns: (headerRow) => {
             headers = headerRow.map((header) => header.trim().toLowerCase())
             duplicateHeaders = headers.filter(
@@ -292,48 +317,30 @@ async function parseCsvFile(file, existingKeys, uploadedKeys, onProgress) {
         },
     })
 
-    const missingHeaders = REQUIRED_CSV_HEADERS.filter(
-        (header) => !headers.includes(header)
-    )
-    const headerErrors = []
-    if (missingHeaders.length) {
-        headerErrors.push(`Missing required headers: ${missingHeaders.join(', ')}`)
-    }
-    if (duplicateHeaders.length) {
-        headerErrors.push(`Duplicate headers: ${[...new Set(duplicateHeaders)].join(', ')}`)
-    }
-    if (headerErrors.length) {
-        return {
-            events: [],
-            errors: [{ file: file.originalname, row: 1, errors: headerErrors }],
-        }
-    }
-    if (records.length === 0) {
-        return {
-            events: [],
-            errors: [{
-                file: file.originalname,
-                row: 1,
-                errors: ['CSV contains no event records'],
-            }],
-        }
-    }
-
     const events = []
     const errors = []
-    const reportEvery = Math.max(1, Math.ceil(records.length / 50))
+    let recordCount = 0
+    let lastReportedPercent = -1
+    let pendingRows = []
 
-    for (let index = 0; index < records.length; index += 1) {
-        const eventData = mapCsvRow(records[index])
-        const rowErrors = []
-        if (Object.values(records[index]).every((value) => String(value ?? '').trim() === '')) {
-            rowErrors.push('Record is empty')
-        } else {
-            const event = new Event(eventData)
+    async function processBatch() {
+        const validationResults = await Promise.all(pendingRows.map(async ({ eventData, empty }) => {
+            if (empty) return null
             try {
-                await event.validate()
+                await Event.validate(eventData)
+                return null
             } catch (error) {
-                rowErrors.push(...Object.values(error.errors).map((item) => item.message))
+                return error
+            }
+        }))
+
+        for (let index = 0; index < pendingRows.length; index += 1) {
+            const { eventData, empty, row } = pendingRows[index]
+            const rowErrors = []
+            if (empty) {
+                rowErrors.push('Record is empty')
+            } else if (validationResults[index]) {
+                rowErrors.push(...Object.values(validationResults[index].errors).map((item) => item.message))
             }
 
             if (rowErrors.length === 0) {
@@ -344,26 +351,81 @@ async function parseCsvFile(file, existingKeys, uploadedKeys, onProgress) {
                     rowErrors.push('Duplicate event appears elsewhere in this CSV import')
                 } else {
                     uploadedKeys.add(duplicateKey)
-                    events.push({ event: eventData, row: index + 2 })
+                    events.push({ event: eventData, row })
                 }
+            }
+
+            if (rowErrors.length) {
+                errors.push({ file: file.originalname, row, errors: rowErrors })
             }
         }
 
-        if (rowErrors.length) {
-            errors.push({
-                file: file.originalname,
-                row: index + 2,
-                errors: rowErrors,
-            })
+        const lastRow = pendingRows.at(-1)
+        const processedBytes = Math.min(file.buffer.length, Number(lastRow.info.bytes) || 0)
+        const percent = file.buffer.length
+            ? Math.floor(processedBytes / file.buffer.length * 100)
+            : 100
+        if (onProgress && (
+            lastRow.row === 2 ||
+            lastRow.row % 250 === 1 ||
+            percent > lastReportedPercent
+        )) {
+            lastReportedPercent = percent
+            await onProgress({ current: lastRow.row - 1, percent })
+        }
+        pendingRows = []
+    }
+
+    for await (const parsedRecord of parser) {
+        const { record, info } = parsedRecord
+        if (recordCount === 0) {
+            const missingHeaders = REQUIRED_CSV_HEADERS.filter(
+                (header) => !headers.includes(header)
+            )
+            const headerErrors = []
+            if (missingHeaders.length) {
+                headerErrors.push(`Missing required headers: ${missingHeaders.join(', ')}`)
+            }
+            if (duplicateHeaders.length) {
+                headerErrors.push(`Duplicate headers: ${[...new Set(duplicateHeaders)].join(', ')}`)
+            }
+            if (headerErrors.length) {
+                errors.push({ file: file.originalname, row: 1, errors: headerErrors })
+                break
+            }
         }
 
-        if (onProgress && (
-            index === 0 ||
-            (index + 1) % reportEvery === 0 ||
-            index === records.length - 1
-        )) {
-            await onProgress({ current: index + 1, total: records.length })
+        recordCount += 1
+        const eventData = mapCsvRow(record)
+        pendingRows.push({
+            eventData,
+            empty: Object.values(record).every((value) => String(value ?? '').trim() === ''),
+            info,
+            row: recordCount + 1,
+        })
+        if (pendingRows.length >= 100) {
+            await processBatch()
         }
+    }
+
+    if (pendingRows.length) await processBatch()
+
+    if (errors.length === 0 && recordCount === 0) {
+        const missingHeaders = REQUIRED_CSV_HEADERS.filter(
+            (header) => !headers.includes(header)
+        )
+        const headerErrors = []
+        if (missingHeaders.length) {
+            headerErrors.push(`Missing required headers: ${missingHeaders.join(', ')}`)
+        }
+        if (duplicateHeaders.length) {
+            headerErrors.push(`Duplicate headers: ${[...new Set(duplicateHeaders)].join(', ')}`)
+        }
+        errors.push({
+            file: file.originalname,
+            row: 1,
+            errors: headerErrors.length ? headerErrors : ['CSV contains no event records'],
+        })
     }
 
     return { events, errors }
@@ -396,6 +458,8 @@ async function importEventsFromCsv(req, res) {
         let importedCount = 0
         let filesImported = 0
         let filesFailed = 0
+        const totalBytes = files.reduce((total, file) => total + file.size, 0)
+        let completedBytes = 0
 
         for (let fileIndex = 0; fileIndex < files.length; fileIndex += 1) {
             const file = files[fileIndex]
@@ -406,7 +470,7 @@ async function importEventsFromCsv(req, res) {
                 file: file.originalname,
                 fileIndex: fileIndexDisplay,
                 fileCount: files.length,
-                percent: Math.round((fileIndex / files.length) * 100),
+                percent: Math.floor(completedBytes / Math.max(totalBytes, 1) * 90),
                 message: `Reading ${file.originalname}`,
             })
 
@@ -415,7 +479,7 @@ async function importEventsFromCsv(req, res) {
                     file,
                     existingKeys,
                     uploadedKeys,
-                    ({ current, total }) => {
+                    async ({ current, percent }) => {
                         writeImportEvent(res, {
                             type: 'progress',
                             stage: 'validating',
@@ -423,16 +487,17 @@ async function importEventsFromCsv(req, res) {
                             fileIndex: fileIndexDisplay,
                             fileCount: files.length,
                             current,
-                            total,
                             percent: Math.min(
-                                99,
-                                Math.round(((fileIndex + current / Math.max(total, 1)) / files.length) * 100)
+                                90,
+                                Math.floor((completedBytes + file.size * percent / 100) / Math.max(totalBytes, 1) * 90)
                             ),
-                            message: `Validating ${file.originalname} (${current} of ${total})`,
+                            message: `Validating ${file.originalname} (row ${current})`,
                         })
+                        await new Promise((resolve) => setImmediate(resolve))
                     }
                 )
                 errors.push(...fileErrors)
+                completedBytes += file.size
 
                 for (let index = 0; index < events.length; index += INSERT_CHUNK_SIZE) {
                     const chunk = events.slice(index, index + INSERT_CHUNK_SIZE)
@@ -452,12 +517,12 @@ async function importEventsFromCsv(req, res) {
                         fileCount: files.length,
                         current: Math.min(index + chunk.length, events.length),
                         total: events.length,
-                        percent: Math.min(
-                            99,
-                            Math.round(((fileIndex + (index + chunk.length) / Math.max(events.length, 1)) / files.length) * 100)
+                        percent: 90 + Math.floor(
+                            ((fileIndex + (index + chunk.length) / Math.max(events.length, 1)) / files.length) * 9
                         ),
                         message: `Saving ${file.originalname} (${Math.min(index + chunk.length, events.length)} of ${events.length})`,
                     })
+                    await new Promise((resolve) => setImmediate(resolve))
                 }
 
                 if (events.length > 0) filesImported += 1

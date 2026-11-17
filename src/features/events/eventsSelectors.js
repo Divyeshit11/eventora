@@ -4,7 +4,7 @@ import { getEventId } from '../../utils/eventIdentity'
 export const selectAllEvents = (state) => state.events.items
 
 export const selectEventCount = (state) =>
-    state.events.items.length
+    state.events.pagination?.totalEvents ?? state.events.items.length
 
 export const selectEventById = (state, eventId) =>
     state.events.items.find(

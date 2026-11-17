@@ -63,4 +63,6 @@ const eventSchema = new Schema(
   }
 )
 
+eventSchema.index({ createdAt: -1 })
+
 module.exports = model('Event', eventSchema)

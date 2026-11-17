@@ -51,6 +51,12 @@ test('authentication, event API CRUD, pagination, and CSV workflows', async () =
     Event.countDocuments = async () => records.length
     Event.findById = async (id) =>
         records.find((record) => record._id === id) || null
+    Event.findOne = async (query) => records.find((record) =>
+        query.title.test(record.title) &&
+        query.location.test(record.location) &&
+        record.date === query.date &&
+        Number(record.price) === query.price
+    ) || null
     Event.create = async (data) => {
         const record = { _id: makeId(), ...data }
         records.unshift(record)
@@ -184,6 +190,21 @@ test('authentication, event API CRUD, pagination, and CSV workflows', async () =
         assert.equal(response.status, 201)
         const created = (await response.json()).data
 
+        response = await fetch(`${baseUrl}/events`, {
+            method: 'POST',
+            headers: adminHeaders,
+            body: JSON.stringify({
+                title: 'API Smoke',
+                category: 'Music',
+                location: 'Local',
+                date: '2026-11-15',
+                price: 99,
+            }),
+        })
+        assert.equal(response.status, 409)
+        assert.match((await response.json()).message, /already exists/i)
+        assert.equal(records.length, 1)
+
         response = await fetch(`${baseUrl}/events/${created._id}`, {
             method: 'PUT',
             headers: adminHeaders,
@@ -223,13 +244,62 @@ test('authentication, event API CRUD, pagination, and CSV workflows', async () =
         assert.deepEqual(summary.successfulRows, [
             { file: 'events.csv', row: 2 },
         ])
+        assert.ok(messages.some((payload) => payload.type === 'progress' && payload.stage === 'validating'))
+        assert.ok(messages.some((payload) => payload.type === 'progress' && payload.stage === 'saving'))
+
+        const bulkFormData = new FormData()
+        for (let index = 0; index < 10; index += 1) {
+            const date = `2026-11-${String(index + 16).padStart(2, '0')}`
+            const bulkCsv = [
+                'title,category,location,date,price',
+                `Bulk Event ${index},Music,Local,${date},${100 + index}`,
+            ].join('\n')
+            bulkFormData.append(
+                'files',
+                new Blob([bulkCsv], { type: 'text/csv' }),
+                `bulk-${index}.csv`
+            )
+        }
+        response = await fetch(`${baseUrl}/events/import-csv`, {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${adminToken}` },
+            body: bulkFormData,
+        })
+        assert.equal(response.status, 200)
+        const bulkMessages = (await response.text())
+            .trim()
+            .split('\n')
+            .map((line) => JSON.parse(line))
+        const bulkSummary = bulkMessages.at(-1)
+        assert.equal(bulkSummary.count, 10)
+        assert.equal(bulkSummary.filesImported, 10)
+        assert.equal(bulkSummary.successfulRows.length, 10)
+
+        const tooManyFiles = new FormData()
+        for (let index = 0; index < 11; index += 1) {
+            tooManyFiles.append(
+                'files',
+                new Blob(['title,category,location,date,price\nA,Music,Local,2026-11-15,1'], { type: 'text/csv' }),
+                `too-many-${index}.csv`
+            )
+        }
+        response = await fetch(`${baseUrl}/events/import-csv`, {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${adminToken}` },
+            body: tooManyFiles,
+        })
+        assert.equal(response.status, 400)
+        assert.match((await response.json()).message, /maximum of 10 CSV files/i)
 
         response = await fetch(`${baseUrl}/events/export-csv`, {
             headers: { Authorization: `Bearer ${adminToken}` },
         })
         assert.equal(response.status, 200)
         const exportedRows = parse(await response.text(), { columns: true })
-        assert.equal(exportedRows[0].description, 'Music, friends')
+        assert.equal(
+            exportedRows.find((row) => row.title === 'Valid Event').description,
+            'Music, friends'
+        )
 
         const invalidFile = new FormData()
         invalidFile.append(

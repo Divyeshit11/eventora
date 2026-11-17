@@ -38,9 +38,10 @@ api.interceptors.response.use(
     }
 )
 
-export async function getEvents(params = {}) {
-    const response = await api.get('/events',{
+export async function getEvents(params = {}, options = {}) {
+    const response = await api.get('/events', {
         params,
+        signal: options.signal,
     })
     return response.data
 }

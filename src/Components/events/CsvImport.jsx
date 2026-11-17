@@ -13,12 +13,15 @@ const requiredHeaders = [
     'date',
     'price',
 ]
+const maxCsvFiles = 10
+const maxCsvFileSize = 10 * 1024 * 1024
 
-function CsvImport() {
+function CsvImport({ onEventsRefreshed }) {
     const dispatch = useDispatch()
     const fileInputRef = useRef(null)
 
-    const [file, setFile] = useState(null)
+    const [uploadMode, setUploadMode] = useState('single')
+    const [files, setFiles] = useState([])
     const [preview, setPreview] = useState([])
     const [totalRows, setTotalRows] = useState(0)
     const [status, setStatus] = useState('idle')
@@ -26,6 +29,8 @@ function CsvImport() {
     const [errors, setErrors] = useState([])
     const [successfulRows, setSuccessfulRows] = useState([])
     const [progress, setProgress] = useState(0)
+    const [progressMessage, setProgressMessage] = useState('')
+    const selectionLimit = uploadMode === 'bulk' ? maxCsvFiles : 1
 
     // Download CSV template
     function downloadCsvTemplate() {
@@ -53,11 +58,10 @@ function CsvImport() {
         URL.revokeObjectURL(url)
     }
 
-    // Select and preview CSV
-    function handleFileChange(event) {
-        const selectedFile = event.target.files?.[0]
-
-        setFile(null)
+    function handleUploadModeChange(mode) {
+        if (mode === uploadMode || status === 'uploading') return
+        setUploadMode(mode)
+        setFiles([])
         setPreview([])
         setTotalRows(0)
         setMessage('')
@@ -65,22 +69,55 @@ function CsvImport() {
         setSuccessfulRows([])
         setStatus('idle')
         setProgress(0)
+        setProgressMessage('')
+        if (fileInputRef.current) fileInputRef.current.value = ''
+    }
 
-        if (!selectedFile) return
+    // Select and preview CSV
+    function handleFileChange(event) {
+        const selectedFiles = Array.from(event.target.files || [])
 
-        if (!selectedFile.name.toLowerCase().endsWith('.csv')) {
-            setMessage('Please select a CSV file.')
+        setFiles([])
+        setPreview([])
+        setTotalRows(0)
+        setMessage('')
+        setErrors([])
+        setSuccessfulRows([])
+        setStatus('idle')
+        setProgress(0)
+        setProgressMessage('')
+
+        if (selectedFiles.length === 0) return
+
+        if (selectedFiles.length > selectionLimit) {
+            setMessage(
+                uploadMode === 'single'
+                    ? 'Select one CSV file in Single CSV mode.'
+                    : `Select no more than ${maxCsvFiles} CSV files at once.`
+            )
             event.target.value = ''
             return
         }
 
-        if (selectedFile.size > 10 * 1024 * 1024) {
-            setMessage('CSV file must be 10 MB or smaller.')
+        const invalidFile = selectedFiles.find(
+            (selectedFile) => !selectedFile.name.toLowerCase().endsWith('.csv')
+        )
+        if (invalidFile) {
+            setMessage(`${invalidFile.name} is not a CSV file.`)
             event.target.value = ''
             return
         }
 
-        Papa.parse(selectedFile, {
+        const oversizedFile = selectedFiles.find(
+            (selectedFile) => selectedFile.size > maxCsvFileSize
+        )
+        if (oversizedFile) {
+            setMessage(`${oversizedFile.name} exceeds the 10 MB per-file limit.`)
+            event.target.value = ''
+            return
+        }
+
+        Papa.parse(selectedFiles[0], {
             header: true,
             skipEmptyLines: 'greedy',
             transformHeader: (header) => header.trim().toLowerCase(),
@@ -118,7 +155,7 @@ function CsvImport() {
                     return
                 }
 
-                setFile(selectedFile)
+                setFiles(selectedFiles)
                 setPreview(results.data.slice(0, 5))
                 setTotalRows(results.data.length)
             },
@@ -132,27 +169,33 @@ function CsvImport() {
 
     // Import CSV to backend
     async function handleImport() {
-        if (!file || status === 'uploading') return
+        if (files.length === 0 || status === 'uploading') return
 
         setStatus('uploading')
         setMessage('')
         setErrors([])
         setSuccessfulRows([])
         setProgress(0)
+        setProgressMessage(`Uploading ${files.length} ${files.length === 1 ? 'CSV file' : 'CSV files'}...`)
 
         try {
-            const result = await importEventsFromCsv(file, {
-                onUploadProgress: ({ percent }) => setProgress(percent),
+            const result = await importEventsFromCsv(files, {
+                onUploadProgress: ({ percent }) => {
+                    setProgress(percent)
+                    setProgressMessage(`Uploading ${files.length === 1 ? 'file' : 'files'} (${percent}%)`)
+                },
                 onProgress: (payload) => {
                     if (payload.type === 'progress') {
                         setProgress(payload.percent || 0)
+                        setProgressMessage(payload.message || 'Processing CSV files...')
                     }
                 },
             })
 
-            const refreshResult = await dispatch(fetchEvents({ limit: 100 }))
+            const refreshResult = await dispatch(fetchEvents({ page: 1, limit: 20 }))
+            onEventsRefreshed?.()
 
-            setFile(null)
+            setFiles([])
             setPreview([])
             setTotalRows(0)
 
@@ -175,6 +218,7 @@ function CsvImport() {
         } catch (error) {
             setStatus('error')
             setSuccessfulRows([])
+            setProgressMessage('')
 
             const responseData = error.response?.data
 
@@ -195,9 +239,29 @@ function CsvImport() {
                 </h2>
 
                 <p className="mt-2 text-sm text-slate-400">
-                    Upload a CSV file to add multiple events to Eventora.
-                    Maximum file size: 10 MB per file.
+                    Choose a single-file import or upload a batch of up to 10 CSV files. Maximum file size: 10 MB per file.
                 </p>
+
+                <div className="mt-5 inline-flex rounded-lg border border-surface-border p-1" role="group" aria-label="CSV upload mode">
+                    <button
+                        type="button"
+                        aria-pressed={uploadMode === 'single'}
+                        onClick={() => handleUploadModeChange('single')}
+                        disabled={status === 'uploading'}
+                        className={`rounded-md px-4 py-2 text-sm font-semibold transition-colors ${uploadMode === 'single' ? 'bg-brand-600 text-white' : 'text-slate-300 hover:bg-slate-800'}`}
+                    >
+                        Single CSV
+                    </button>
+                    <button
+                        type="button"
+                        aria-pressed={uploadMode === 'bulk'}
+                        onClick={() => handleUploadModeChange('bulk')}
+                        disabled={status === 'uploading'}
+                        className={`rounded-md px-4 py-2 text-sm font-semibold transition-colors ${uploadMode === 'bulk' ? 'bg-brand-600 text-white' : 'text-slate-300 hover:bg-slate-800'}`}
+                    >
+                        Bulk CSV (up to 10)
+                    </button>
+                </div>
 
                 <button
                     type="button"
@@ -212,6 +276,7 @@ function CsvImport() {
                         ref={fileInputRef}
                         type="file"
                         accept=".csv,text/csv"
+                        multiple={uploadMode === 'bulk'}
                         onChange={handleFileChange}
                         disabled={status === 'uploading'}
                         className="block w-full min-w-0 text-sm text-slate-300 file:mr-4 file:rounded-lg file:border-0 file:bg-brand-600 file:px-4 file:py-2 file:font-semibold file:text-white"
@@ -220,19 +285,27 @@ function CsvImport() {
                     <button
                         type="button"
                         onClick={handleImport}
-                        disabled={!file || status === 'uploading'}
+                        disabled={files.length === 0 || status === 'uploading'}
                         className="shrink-0 rounded-lg bg-brand-600 px-5 py-3 text-sm font-semibold text-white hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-50"
                     >
                         {status === 'uploading'
                             ? 'Importing...'
-                            : 'Import CSV'}
+                            : uploadMode === 'single'
+                                ? 'Import CSV'
+                                : `Import ${files.length || 'CSV'} ${files.length === 1 ? 'file' : 'files'}`}
                     </button>
                 </div>
+
+                {files.length > 0 && (
+                    <p className="mt-3 text-sm text-slate-400">
+                        {files.length} {files.length === 1 ? 'file' : 'files'} selected: {files.map((selectedFile) => selectedFile.name).join(', ')}
+                    </p>
+                )}
 
                 {status === 'uploading' && (
                     <div className="mt-4" aria-live="polite">
                         <div className="mb-1 flex justify-between text-xs text-slate-400">
-                            <span>Import progress</span>
+                            <span>{progressMessage || 'Import progress'}</span>
                             <span>{progress}%</span>
                         </div>
                         <progress
@@ -244,14 +317,8 @@ function CsvImport() {
                     </div>
                 )}
 
-                {file && (
-                    <p className="mt-3 text-sm text-slate-400">
-                        Selected: {file.name}
-                    </p>
-                )}
-
                 {/* CSV Preview */}
-                {file && preview.length > 0 && (
+                {files.length > 0 && preview.length > 0 && (
                     <div className="mt-6">
                         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
                             <h3 className="font-semibold text-white">
@@ -264,11 +331,11 @@ function CsvImport() {
                         </div>
 
                         <p className="mb-3 text-sm text-slate-400">
-                            Showing first {preview.length} rows.
+                            Preview from the first selected file, showing {preview.length} rows.
                         </p>
 
                         <div className="overflow-x-auto rounded-lg border border-surface-border">
-                            <table className="w-full min-w-[650px] text-left text-sm">
+                            <table className="w-full min-w-162.5 text-left text-sm">
                                 <thead className="bg-slate-800 text-slate-300">
                                     <tr>
                                         {requiredHeaders.map((header) => (
@@ -335,7 +402,7 @@ function CsvImport() {
                             <li key={index}>
                                 {typeof error === 'string'
                                     ? error
-                                    : `Row ${error.row}: ${error.errors?.join(', ')}`}
+                                        : `${error.file ? `${error.file}, ` : ''}row ${error.row}: ${error.errors?.join(', ')}`}
                             </li>
                         ))}
                     </ul>

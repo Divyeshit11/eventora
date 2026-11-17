@@ -1,18 +1,49 @@
 
+import { useEffect, useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { Link } from 'react-router'
 import Navbar from '../Components/layout/Navbar'
 import Footer from '../Components/layout/Footer'
-import { selectFavoriteEvents } from '../features/events/eventsSelectors'
+import { selectFavoriteIds } from '../features/events/eventsSelectors'
 import { toggleFavorite } from '../features/events/eventsSlice'
 import EventImage from '../Components/common/EventImage'
 import { getEventId } from '../utils/eventIdentity'
+import { getEventById } from '../services/eventService'
 
 function FavoritesPage() {
-  const favoriteEvents = useSelector(selectFavoriteEvents)
-  const eventsStatus = useSelector((state) => state.events.status)
-  const eventsError = useSelector((state) => state.events.error)
+  const favoriteIds = useSelector(selectFavoriteIds)
   const dispatch = useDispatch()
+  const [favoriteEvents, setFavoriteEvents] = useState([])
+  const [request, setRequest] = useState({ key: '', status: 'loading', error: '' })
+  const favoriteKey = JSON.stringify(favoriteIds)
+  const requestStatus = favoriteIds.length === 0
+    ? 'empty'
+    : request.key === favoriteKey
+      ? request.status
+      : 'loading'
+
+  useEffect(() => {
+    let isCurrent = true
+    if (favoriteIds.length === 0) return undefined
+    Promise.all(favoriteIds.map((id) => getEventById(id)))
+      .then((events) => {
+        if (!isCurrent) return
+        setFavoriteEvents(events)
+        setRequest({ key: favoriteKey, status: 'succeeded', error: '' })
+      })
+      .catch((error) => {
+        if (!isCurrent) return
+        setRequest({
+          key: favoriteKey,
+          status: 'failed',
+          error: error.response?.data?.message || error.message || 'Unable to load your saved events.',
+        })
+      })
+
+    return () => {
+      isCurrent = false
+    }
+  }, [favoriteIds, favoriteKey])
 
   return (
     <div className="min-h-screen bg-surface text-white">
@@ -31,11 +62,11 @@ function FavoritesPage() {
           Events you've saved for later.
         </p>
 
-        {eventsStatus === 'failed' ? (
+        {requestStatus === 'failed' ? (
           <p className="mt-8 rounded-xl border border-red-800 bg-red-950/30 p-5 text-red-300" role="alert">
-            {eventsError || 'Unable to load your saved events.'}
+            {request.error}
           </p>
-        ) : eventsStatus === 'idle' || eventsStatus === 'loading' ? (
+        ) : requestStatus === 'loading' ? (
           <p className="mt-8 py-12 text-center text-slate-400" role="status">
             Loading favorites...
           </p>

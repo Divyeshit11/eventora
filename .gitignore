@@ -20,6 +20,9 @@ server/.env
 server/.env.*
 !server/.env.example
 
+# Locally generated CSVs used for storage/import testing.
+test-fixtures/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

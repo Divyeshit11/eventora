@@ -25,45 +25,33 @@ function loadFavorites() {
 // FETCH EVENTS
 export const fetchEvents = createAsyncThunk(
     'events/fetchEvents',
-    async (params = {}, { rejectWithValue }) => {
+    async (params = {}, { rejectWithValue, signal }) => {
         try {
             const query = {
                 ...params,
                 page: params.page ?? 1,
-                limit: params.limit ?? 100,
+                limit: params.limit ?? 9,
             }
-            const response = await getEvents(query)
+            const response = await getEvents(query, { signal })
             const items = Array.isArray(response)
                 ? [...response]
                 : Array.isArray(response.data)
                     ? [...response.data]
                     : []
             const pagination = response.pagination ?? null
-            const totalPages = pagination?.totalPages ?? query.page
-
-            for (let page = query.page + 1; page <= totalPages; page += 1) {
-                const nextResponse = await getEvents({ ...query, page })
-                const nextItems = Array.isArray(nextResponse)
-                    ? nextResponse
-                    : nextResponse.data
-                if (Array.isArray(nextItems)) items.push(...nextItems)
-            }
 
             return {
                 items,
                 pagination,
             }
         } catch (error) {
+            if (signal.aborted) throw error
             return rejectWithValue(
                 error.response?.data?.message ||
                 error.message ||
                 'Failed to load events'
             )
         }
-    },
-    {
-        condition: (_, { getState }) =>
-            getState().events.status !== 'loading',
     }
 )
 
@@ -143,11 +131,21 @@ const eventsSlice = createSlice({
         },
 
         removeEvent: (state, action) => {
+            const previousCount = state.items.length
             state.items = state.items.filter(
                 (event) =>
                     String(event._id ?? event.id) !==
                     String(action.payload)
             )
+            if (state.pagination && state.items.length < previousCount) {
+                state.pagination.totalEvents = Math.max(
+                    0,
+                    state.pagination.totalEvents - 1
+                )
+                state.pagination.totalPages = Math.ceil(
+                    state.pagination.totalEvents / state.pagination.limit
+                )
+            }
 
             state.favorites = state.favorites.filter(
                 (id) => String(id) !== String(action.payload)
@@ -187,6 +185,7 @@ const eventsSlice = createSlice({
             })
 
             .addCase(fetchEvents.rejected, (state, action) => {
+                if (action.meta.aborted) return
                 state.status = 'failed'
                 state.error =
                     action.payload || 'Failed to load events'
@@ -200,7 +199,15 @@ const eventsSlice = createSlice({
 
             .addCase(createEventThunk.fulfilled, (state, action) => {
                 state.createStatus = 'succeeded'
-                state.items.unshift(action.payload)
+                if (!state.pagination || state.pagination.currentPage === 1) {
+                    state.items.unshift(action.payload)
+                }
+                if (state.pagination) {
+                    state.pagination.totalEvents += 1
+                    state.pagination.totalPages = Math.ceil(
+                        state.pagination.totalEvents / state.pagination.limit
+                    )
+                }
             })
 
             .addCase(createEventThunk.rejected, (state, action) => {
@@ -238,11 +245,21 @@ const eventsSlice = createSlice({
             .addCase(deleteEventThunk.fulfilled, (state, action) => {
                 state.deleteStatus = 'succeeded'
 
+                const previousCount = state.items.length
                 state.items = state.items.filter(
                     (event) =>
                         String(event._id ?? event.id) !==
                         String(action.payload)
                 )
+                if (state.pagination && state.items.length < previousCount) {
+                    state.pagination.totalEvents = Math.max(
+                        0,
+                        state.pagination.totalEvents - 1
+                    )
+                    state.pagination.totalPages = Math.ceil(
+                        state.pagination.totalEvents / state.pagination.limit
+                    )
+                }
 
                 state.favorites = state.favorites.filter(
                     (id) => String(id) !== String(action.payload)

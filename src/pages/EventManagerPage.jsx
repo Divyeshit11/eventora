@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { Link, useNavigate } from 'react-router'
 import {
@@ -8,6 +8,7 @@ import {
 import {
     createEventThunk,
     deleteEventThunk,
+    fetchEvents,
     updateEventThunk,
 } from '../features/events/eventsSlice'
 import { changePassword as changePasswordAPI, exportEventsCsv } from '../services/eventService'
@@ -34,6 +35,7 @@ function EventManagerPage() {
     const currentUser = useSelector((state) => state.auth.user)
     const events = useSelector(selectAllEvents)
     const eventCount = useSelector(selectEventCount)
+    const eventsPagination = useSelector((state) => state.events.pagination)
     const eventsStatus = useSelector((state) => state.events.status)
     const eventsError = useSelector((state) => state.events.error)
     const createStatus = useSelector((state) => state.events.createStatus)
@@ -43,6 +45,7 @@ function EventManagerPage() {
     const deleteStatus = useSelector((state) => state.events.deleteStatus)
     const deleteError = useSelector((state) => state.events.deleteError)
     const [formData, setFormData] = useState(emptyForm)
+    const [managerPage, setManagerPage] = useState(1)
     const [editingId, setEditingId] = useState(null)
     const [saveSuccess, setSaveSuccess] = useState('')
     const [exportStatus, setExportStatus] = useState('idle')
@@ -53,6 +56,12 @@ function EventManagerPage() {
     })
     const [passwordStatus, setPasswordStatus] = useState('idle')
     const [passwordMessage, setPasswordMessage] = useState('')
+
+    useEffect(() => {
+        const controller = new AbortController()
+        dispatch(fetchEvents({ page: managerPage, limit: 20 }, { signal: controller.signal }))
+        return () => controller.abort()
+    }, [dispatch, managerPage])
 
     function handleChange(event) {
         const { name, value } = event.target
@@ -109,7 +118,14 @@ function EventManagerPage() {
 
     async function handleRemoveEvent(eventId) {
         if (!window.confirm('Are you sure you want to delete this event?')) return
-        await dispatch(deleteEventThunk(eventId))
+        const result = await dispatch(deleteEventThunk(eventId))
+        if (
+            deleteEventThunk.fulfilled.match(result) &&
+            events.length === 1 &&
+            managerPage > 1
+        ) {
+            setManagerPage((page) => page - 1)
+        }
     }
 
     async function handleExport() {
@@ -336,7 +352,7 @@ function EventManagerPage() {
 
                 <section className="mt-10">
                     <div className="flex flex-wrap items-center justify-between gap-3">
-                        <h2 className="text-2xl font-bold">Events ({events.length})</h2>
+                        <h2 className="text-2xl font-bold">Events ({eventCount.toLocaleString()})</h2>
                         <Button
                             variant="secondary"
                             onClick={handleExport}
@@ -409,9 +425,30 @@ function EventManagerPage() {
                             </p>
                         )}
                     </div>
+                    {eventsPagination && eventsPagination.totalPages > 1 && (
+                        <div className="mt-5 flex items-center justify-center gap-4">
+                            <Button
+                                variant="secondary"
+                                disabled={managerPage <= 1 || eventsStatus === 'loading'}
+                                onClick={() => setManagerPage((page) => page - 1)}
+                            >
+                                Previous
+                            </Button>
+                            <p className="text-sm text-slate-400">
+                                Page {managerPage.toLocaleString()} of {eventsPagination.totalPages.toLocaleString()}
+                            </p>
+                            <Button
+                                variant="secondary"
+                                disabled={managerPage >= eventsPagination.totalPages || eventsStatus === 'loading'}
+                                onClick={() => setManagerPage((page) => page + 1)}
+                            >
+                                Next
+                            </Button>
+                        </div>
+                    )}
                 </section>
 
-                <CsvImport />
+                <CsvImport onEventsRefreshed={() => setManagerPage(1)} />
             </main>
             <Footer />
         </div>

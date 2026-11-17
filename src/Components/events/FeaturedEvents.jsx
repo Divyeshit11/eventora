@@ -29,14 +29,17 @@ function FeaturedEvents({
     const totalEvents = pagination?.totalEvents ?? 0
 
     // Display a compact set of page numbers.
-    const visiblePages = Array.from(
-        { length: totalPages },
-        (_, index) => index + 1
-    ).filter((page) =>
-        page === 1 ||
-        page === totalPages ||
-        Math.abs(page - currentPage) <= 2
-    )
+    const visiblePages = [...new Set([
+        1,
+        currentPage - 2,
+        currentPage - 1,
+        currentPage,
+        currentPage + 1,
+        currentPage + 2,
+        totalPages,
+    ])]
+        .filter((page) => page >= 1 && page <= totalPages)
+        .sort((left, right) => left - right)
 
     function handleResetFilters() {
         onSearchChange('')

@@ -15,7 +15,7 @@ const {
 
 const router = express.Router()
 
-const MAX_CSV_FILES = 5
+const MAX_CSV_FILES = 10
 const MAX_CSV_SIZE = 10 * 1024 * 1024
 
 const upload = multer({

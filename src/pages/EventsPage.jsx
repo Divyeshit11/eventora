@@ -1,13 +1,16 @@
-import { useMemo, useState } from 'react'
-import { useSelector } from 'react-redux'
+import { useEffect, useState } from 'react'
+import { useDispatch, useSelector } from 'react-redux'
 import Navbar from '../Components/layout/Navbar'
 import FeaturedEvents from '../Components/events/FeaturedEvents'
 import Footer from '../Components/layout/Footer'
+import { fetchEvents } from '../features/events/eventsSlice'
 
 const PAGE_SIZE = 9
 
 function EventsPage() {
+    const dispatch = useDispatch()
     const events = useSelector((state) => state.events.items)
+    const pagination = useSelector((state) => state.events.pagination)
     const status = useSelector((state) => state.events.status)
     const error = useSelector((state) => state.events.error)
     const [selectedCategory, setSelectedCategory] = useState('all')
@@ -16,37 +19,24 @@ function EventsPage() {
     const [sortBy, setSortBy] = useState('default')
     const [currentPage, setCurrentPage] = useState(1)
 
-    const filteredEvents = useMemo(() => {
-        const normalizedSearch = searchTerm.trim().toLowerCase()
-        const filtered = events.filter((event) => {
-            const matchesSearch =
-                !normalizedSearch ||
-                `${event.title} ${event.location}`
-                    .toLowerCase()
-                    .includes(normalizedSearch)
-            const matchesCategory =
-                selectedCategory === 'all' ||
-                event.category === selectedCategory
-            const matchesPrice = Number(event.price) <= maxPrice
-            return matchesSearch && matchesCategory && matchesPrice
-        })
+    useEffect(() => {
+        const controller = new AbortController()
+        const timer = window.setTimeout(() => {
+            dispatch(fetchEvents({
+                page: currentPage,
+                limit: PAGE_SIZE,
+                ...(searchTerm.trim() && { search: searchTerm.trim() }),
+                ...(selectedCategory !== 'all' && { category: selectedCategory }),
+                maxPrice,
+                sort: sortBy,
+            }, { signal: controller.signal }))
+        }, searchTerm ? 250 : 0)
 
-        if (sortBy === 'price-low') {
-            filtered.sort((a, b) => Number(a.price) - Number(b.price))
-        } else if (sortBy === 'price-high') {
-            filtered.sort((a, b) => Number(b.price) - Number(a.price))
-        } else if (sortBy === 'title') {
-            filtered.sort((a, b) => a.title.localeCompare(b.title))
+        return () => {
+            window.clearTimeout(timer)
+            controller.abort()
         }
-
-        return filtered
-    }, [events, maxPrice, searchTerm, selectedCategory, sortBy])
-
-    const totalPages = Math.ceil(filteredEvents.length / PAGE_SIZE)
-    const pageEvents = filteredEvents.slice(
-        (currentPage - 1) * PAGE_SIZE,
-        currentPage * PAGE_SIZE
-    )
+    }, [currentPage, dispatch, maxPrice, searchTerm, selectedCategory, sortBy])
 
     function updateFilter(setter, value) {
         setter(value)
@@ -70,11 +60,8 @@ function EventsPage() {
                     </p>
                 </div>
                 <FeaturedEvents
-                    events={pageEvents}
-                    pagination={{
-                        totalPages,
-                        totalEvents: filteredEvents.length,
-                    }}
+                    events={events}
+                    pagination={pagination}
                     currentPage={currentPage}
                     onPageChange={setCurrentPage}
                     searchTerm={searchTerm}

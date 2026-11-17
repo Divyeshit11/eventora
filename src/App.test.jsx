@@ -53,9 +53,43 @@ describe('App routing', () => {
 
     expect(await screen.findByRole('heading', { name: /administrator sign in/i })).toBeInTheDocument()
 
+    expect(getEvents).not.toHaveBeenCalled()
+  })
+
+  it('loads one server-paginated page on the home page', async () => {
+    const store = configureStore({
+      reducer: {
+        auth: (state = { user: null, status: 'idle', error: null }) => state,
+        events: (
+          state = {
+            items: [],
+            favorites: [],
+            pagination: null,
+            status: 'idle',
+            error: null,
+            createStatus: 'idle',
+            createError: null,
+            updateStatus: 'idle',
+            updateError: null,
+            deleteStatus: 'idle',
+            deleteError: null,
+          },
+        ) => state,
+      },
+    })
+
+    render(
+      <Provider store={store}>
+        <MemoryRouter initialEntries={['/']}>
+          <App />
+        </MemoryRouter>
+      </Provider>,
+    )
+
     await waitFor(() => {
       expect(getEvents).toHaveBeenCalledWith(
-        expect.objectContaining({ page: 1, limit: 100 }),
+        { page: 1, limit: 9 },
+        expect.objectContaining({ signal: expect.any(AbortSignal) }),
       )
     })
   })

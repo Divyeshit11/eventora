@@ -7,17 +7,12 @@ import EventManagerPage from "./pages/EventManagerPage";
 import FavoritesPage from './pages/FavoritesPage'
 import { useEffect } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
-import { fetchEvents } from './features/events/eventsSlice'
 import { logout } from './features/auth/authSlice'
 import AdminLoginPage from './pages/AdminLoginPage'
 import RegisterPage from './pages/RegisterPage'
 
 function App() {
   const dispatch = useDispatch()
-
-  useEffect(() => {
-    dispatch(fetchEvents({ limit: 100 }))
-  }, [dispatch])
 
   useEffect(() => {
     const handleUnauthorized = () => dispatch(logout())
