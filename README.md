@@ -51,10 +51,11 @@ fields.
 
 ### Vercel (frontend and API on one domain)
 
-The repository includes [vercel.json](./vercel.json), which builds the Vite
-application and routes every `/api/*` request to the existing Express API as a
-single Vercel Function. Import this repository into Vercel with the project
-root set to this directory; do not set the root directory to `server`.
+The repository includes [vercel.json](./vercel.json), which installs the
+frontend and nested server dependencies, builds the Vite application, and
+routes every `/api/*` request to the existing Express API as a single Vercel
+Function. Import this repository into Vercel with the project root set to this
+directory; do not set the root directory to `server`.
 
 Set these Vercel environment variables for **Production**, and use the same
 values for Preview only when that deployment should connect to the production
