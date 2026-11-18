@@ -19,13 +19,17 @@ Express API and MongoDB.
 The API defaults to port `5000`; `CLIENT_URL` accepts a comma-separated list of
 allowed browser origins. The first configured administrator is created on server
 startup if the account does not exist; its password is not reset on later
-starts. Public registration creates ordinary users only. Only administrators
-may create, update, delete, import, or export events. Do not commit environment
-files or credentials.
+starts. The landing page and account creation/sign-in pages are public; event
+browsing, event details, and favorites require a valid sign-in. Registration
+creates ordinary users, requires a password of at least six characters, and
+signs the new user in immediately. Administrator credentials still require at
+least 12 characters. Only administrators may create, update, delete, import, or
+export events. Do not commit environment files or credentials.
 
 ## Event API
 
-- `GET /api/events` supports `page`, `limit` (maximum 100), `search`, `category`,
+- `GET /api/events` and `GET /api/events/:id` require a valid bearer token.
+  Listing supports `page`, `limit` (maximum 100), `search`, `category`,
   `maxPrice`, and `sort`.
 - Event discovery requests one database-paginated page at a time; search,
   category, price, and sort filters are applied by the API rather than by

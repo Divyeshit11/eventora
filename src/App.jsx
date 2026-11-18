@@ -1,4 +1,4 @@
-import { Navigate, Route, Routes } from "react-router";
+import { Navigate, Route, Routes, useLocation } from "react-router";
 import HomePage from "./pages/HomePage";
 import EventsPage from "./pages/EventsPage";
 import EventDetailPage from "./pages/EventDetailsPage";
@@ -8,8 +8,21 @@ import FavoritesPage from './pages/FavoritesPage'
 import { useEffect } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { logout } from './features/auth/authSlice'
-import AdminLoginPage from './pages/AdminLoginPage'
+import LoginPage from './pages/LoginPage'
 import RegisterPage from './pages/RegisterPage'
+
+function RequireAuth({ children, adminOnly = false }) {
+  const user = useSelector((state) => state.auth.user)
+  const location = useLocation()
+
+  if (!user) {
+    return <Navigate to="/login" replace state={{ from: location }} />
+  }
+  if (adminOnly && user.role !== 'admin') {
+    return <Navigate to="/events" replace />
+  }
+  return children
+}
 
 function App() {
   const dispatch = useDispatch()
@@ -20,17 +33,18 @@ function App() {
     return () => window.removeEventListener('eventora:unauthorized', handleUnauthorized)
   }, [dispatch])
 
-  const isAdmin = useSelector((state) => state.auth.user?.role === 'admin')
-
   return (
     <Routes>
       <Route path="/" element={<HomePage />} />
-      <Route path="/events" element={<EventsPage />} />
-      <Route path="/events/:eventId" element={<EventDetailPage />} />
-      <Route path="/manage-events" element={isAdmin ? <EventManagerPage /> : <Navigate to="/login" replace />} />
-      <Route path="/login" element={<AdminLoginPage />} />
+      <Route path="/events" element={<RequireAuth><EventsPage /></RequireAuth>} />
+      <Route path="/events/:eventId" element={<RequireAuth><EventDetailPage /></RequireAuth>} />
+      <Route
+        path="/manage-events"
+        element={<RequireAuth adminOnly><EventManagerPage /></RequireAuth>}
+      />
+      <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
-      <Route path="/favorites" element={<FavoritesPage />} />
+      <Route path="/favorites" element={<RequireAuth><FavoritesPage /></RequireAuth>} />
       <Route path="*" element={<NotFoundPage />} />
     </Routes>
   )

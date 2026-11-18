@@ -1,5 +1,5 @@
 import { createAsyncThunk, createSlice } from '@reduxjs/toolkit'
-import { login as loginAPI } from '../../services/eventService'
+import { login as loginAPI, register as registerAPI } from '../../services/eventService'
 
 const TOKEN_KEY = 'eventora-auth-token'
 
@@ -53,6 +53,30 @@ export const loginThunk = createAsyncThunk(
     }
 )
 
+export const registerThunk = createAsyncThunk(
+    'auth/register',
+    async (credentials, { rejectWithValue }) => {
+        try {
+            const session = await registerAPI(credentials)
+            try {
+                localStorage.setItem(TOKEN_KEY, session.token)
+                localStorage.setItem('eventora-auth-user', JSON.stringify(session.user))
+            } catch {
+                return rejectWithValue(
+                    'Your account was created, but this browser could not save the sign-in session. Please sign in.'
+                )
+            }
+            return session.user
+        } catch (error) {
+            return rejectWithValue(
+                error.response?.data?.message ||
+                error.message ||
+                'Unable to create account'
+            )
+        }
+    }
+)
+
 const initialSession = readStoredSession()
 
 const authSlice = createSlice({
@@ -86,6 +110,19 @@ const authSlice = createSlice({
             .addCase(loginThunk.rejected, (state, action) => {
                 state.status = 'failed'
                 state.error = action.payload || 'Unable to sign in'
+            })
+            .addCase(registerThunk.pending, (state) => {
+                state.status = 'loading'
+                state.error = null
+            })
+            .addCase(registerThunk.fulfilled, (state, action) => {
+                state.status = 'succeeded'
+                state.user = action.payload
+                state.error = null
+            })
+            .addCase(registerThunk.rejected, (state, action) => {
+                state.status = 'failed'
+                state.error = action.payload || 'Unable to create account'
             })
     },
 })

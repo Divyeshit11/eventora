@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import { Provider } from 'react-redux'
 import { MemoryRouter } from 'react-router'
 import { configureStore } from '@reduxjs/toolkit'
@@ -51,12 +51,12 @@ describe('App routing', () => {
       </Provider>,
     )
 
-    expect(await screen.findByRole('heading', { name: /administrator sign in/i })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: /sign in to eventora/i })).toBeInTheDocument()
 
     expect(getEvents).not.toHaveBeenCalled()
   })
 
-  it('loads one server-paginated page on the home page', async () => {
+  it('shows the public landing page without requesting protected event data', async () => {
     const store = configureStore({
       reducer: {
         auth: (state = { user: null, status: 'idle', error: null }) => state,
@@ -86,11 +86,41 @@ describe('App routing', () => {
       </Provider>,
     )
 
-    await waitFor(() => {
-      expect(getEvents).toHaveBeenCalledWith(
-        { page: 1, limit: 9 },
-        expect.objectContaining({ signal: expect.any(AbortSignal) }),
-      )
+    expect(await screen.findByRole('heading', { name: /something exciting/i })).toBeInTheDocument()
+    expect(getEvents).not.toHaveBeenCalled()
+  })
+
+  it('redirects guests from event browsing to sign in', async () => {
+    const store = configureStore({
+      reducer: {
+        auth: (state = { user: null, status: 'idle', error: null }) => state,
+        events: (
+          state = {
+            items: [],
+            favorites: [],
+            pagination: null,
+            status: 'idle',
+            error: null,
+            createStatus: 'idle',
+            createError: null,
+            updateStatus: 'idle',
+            updateError: null,
+            deleteStatus: 'idle',
+            deleteError: null,
+          },
+        ) => state,
+      },
     })
+
+    render(
+      <Provider store={store}>
+        <MemoryRouter initialEntries={['/events']}>
+          <App />
+        </MemoryRouter>
+      </Provider>,
+    )
+
+    expect(await screen.findByRole('heading', { name: /sign in to eventora/i })).toBeInTheDocument()
+    expect(getEvents).not.toHaveBeenCalled()
   })
 })

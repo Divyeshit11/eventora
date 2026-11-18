@@ -106,6 +106,11 @@ test('authentication, event API CRUD, pagination, and CSV workflows', async () =
         })
         assert.equal(response.status, 401)
 
+        response = await fetch(`${baseUrl}/events`)
+        assert.equal(response.status, 401)
+        response = await fetch(`${baseUrl}/events/507f1f77bcf86cd799439011`)
+        assert.equal(response.status, 401)
+
         response = await fetch(`${baseUrl}/auth/login`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -135,21 +140,35 @@ test('authentication, event API CRUD, pagination, and CSV workflows', async () =
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
+                email: 'too-short@example.test',
+                password: 'abc12',
+            }),
+        })
+        assert.equal(response.status, 400)
+        assert.match((await response.json()).message, /at least 6 characters/i)
+
+        response = await fetch(`${baseUrl}/auth/register`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
                 email: 'regular@example.test',
-                password: 'regular-user-password-123',
+                password: 'abc123',
             }),
         })
         assert.equal(response.status, 201)
-        assert.equal((await response.json()).data.role, 'user')
+        const registration = await response.json()
+        assert.equal(registration.data.user.role, 'user')
+        assert.ok(registration.data.token)
 
         response = await fetch(`${baseUrl}/auth/login`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 email: 'regular@example.test',
-                password: 'regular-user-password-123',
+                password: 'abc123',
             }),
         })
+        assert.equal(response.status, 200)
         const userToken = (await response.json()).data.token
         response = await fetch(`${baseUrl}/events`, {
             method: 'POST',
@@ -163,7 +182,8 @@ test('authentication, event API CRUD, pagination, and CSV workflows', async () =
 
         for (const path of ['/events', '/events/']) {
             response = await fetch(
-                `${baseUrl}${path}?page=1&limit=5&search=meetup&category=Music&maxPrice=200&sort=price-low`
+                `${baseUrl}${path}?page=1&limit=5&search=meetup&category=Music&maxPrice=200&sort=price-low`,
+                { headers: adminHeaders }
             )
             assert.equal(response.status, 200)
             const payload = await response.json()
@@ -171,9 +191,11 @@ test('authentication, event API CRUD, pagination, and CSV workflows', async () =
             assert.equal(payload.pagination.limit, 5)
         }
 
-        response = await fetch(`${baseUrl}/events/not-an-id`)
+        response = await fetch(`${baseUrl}/events/not-an-id`, { headers: adminHeaders })
         assert.equal(response.status, 400)
-        response = await fetch(`${baseUrl}/events/507f1f77bcf86cd799439011`)
+        response = await fetch(`${baseUrl}/events/507f1f77bcf86cd799439011`, {
+            headers: adminHeaders,
+        })
         assert.equal(response.status, 404)
 
         response = await fetch(`${baseUrl}/events`, {
@@ -189,6 +211,12 @@ test('authentication, event API CRUD, pagination, and CSV workflows', async () =
         })
         assert.equal(response.status, 201)
         const created = (await response.json()).data
+
+        response = await fetch(`${baseUrl}/events/${created._id}`, {
+            headers: adminHeaders,
+        })
+        assert.equal(response.status, 200)
+        assert.equal((await response.json()).data._id, created._id)
 
         response = await fetch(`${baseUrl}/events`, {
             method: 'POST',

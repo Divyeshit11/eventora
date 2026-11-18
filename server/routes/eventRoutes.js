@@ -50,13 +50,13 @@ function uploadCsv(req,res,next) {
     })
 }
 
-router.get('/', getEvents)
+router.get('/', requireAuth, getEvents)
 router.post('/', requireAuth, requireAdmin, createEvent)
 
 router.post('/import-csv', requireAuth, requireAdmin, uploadCsv, importEventsFromCsv)
 router.get('/export-csv', requireAuth, requireAdmin, exportEventsToCsv)
 
-router.get('/:id', getEventById)
+router.get('/:id', requireAuth, getEventById)
 router.put('/:id', requireAuth, requireAdmin, updateEvent)
 router.delete('/:id', requireAuth, requireAdmin, deleteEvent)
 

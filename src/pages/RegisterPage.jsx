@@ -1,57 +1,62 @@
 import { useState } from 'react'
 import { Link, Navigate } from 'react-router'
+import { useDispatch, useSelector } from 'react-redux'
 import Navbar from '../Components/layout/Navbar'
 import Footer from '../Components/layout/Footer'
 import Button from '../Components/common/Button'
-import { register } from '../services/eventService'
+import PasswordInput from '../Components/common/PasswordInput'
+import { registerThunk } from '../features/auth/authSlice'
+
+function getFriendlyPasswordError(message) {
+    const legacyPasswordError = message?.match(
+        /password must be (\d+)-\d+ characters and no more than 72 UTF-8 bytes/i,
+    )
+    if (legacyPasswordError) {
+        return `Please use at least ${legacyPasswordError[1]} characters for your password.`
+    }
+    return message
+}
 
 function RegisterPage() {
+    const dispatch = useDispatch()
+    const user = useSelector((state) => state.auth.user)
+    const status = useSelector((state) => state.auth.status)
+    const error = useSelector((state) => state.auth.error)
     const [email, setEmail] = useState('')
     const [password, setPassword] = useState('')
-    const [status, setStatus] = useState('idle')
-    const [message, setMessage] = useState('')
-    const [error, setError] = useState('')
+    const [passwordError, setPasswordError] = useState('')
+
+    if (user) {
+        return <Navigate to={user.role === 'admin' ? '/manage-events' : '/events'} replace />
+    }
 
     async function handleSubmit(event) {
         event.preventDefault()
-        setStatus('loading')
-        setError('')
-        setMessage('')
-        try {
-            const response = await register({ email, password })
-            setStatus('succeeded')
-            setMessage(response.message)
-        } catch (requestError) {
-            setStatus('failed')
-            setError(
-                requestError.response?.data?.message ||
-                requestError.message ||
-                'Unable to create account'
-            )
+        if (new TextEncoder().encode(password).length > 72) {
+            setPasswordError('Password must be no more than 72 UTF-8 bytes.')
+            return
         }
-    }
-
-    if (status === 'succeeded') {
-        return <Navigate to="/login" replace state={{ notice: message }} />
+        setPasswordError('')
+        await dispatch(registerThunk({ email, password }))
     }
 
     return (
         <div className="min-h-screen bg-surface text-white">
             <Navbar />
             <main className="mx-auto max-w-md px-4 py-16 sm:px-6">
-                <h1 className="text-3xl font-bold">Create an account</h1>
+                <h1 className="text-3xl font-bold">Create your account</h1>
                 <p className="mt-3 text-slate-400">
-                    New accounts are regular users. Administrator access is provisioned securely by the server.
+                    Sign up once and start discovering events right away.
                 </p>
                 <form
                     onSubmit={handleSubmit}
                     className="mt-8 grid gap-5 rounded-2xl border border-surface-border bg-surface-card p-6"
                 >
                     <label className="grid gap-2 text-sm text-slate-300">
-                        Email
+                        Email address
                         <input
                             type="email"
-                            autoComplete="username"
+                            autoComplete="email"
                             value={email}
                             onChange={(event) => setEmail(event.target.value)}
                             maxLength="254"
@@ -59,26 +64,33 @@ function RegisterPage() {
                             className="rounded-lg border border-surface-border bg-surface px-3 py-3 text-white"
                         />
                     </label>
-                    <label className="grid gap-2 text-sm text-slate-300">
-                        Password (12 characters minimum)
-                        <input
-                            type="password"
-                            autoComplete="new-password"
-                            value={password}
-                            onChange={(event) => setPassword(event.target.value)}
-                            minLength="12"
-                            maxLength="128"
-                            required
-                            className="rounded-lg border border-surface-border bg-surface px-3 py-3 text-white"
-                        />
-                    </label>
-                    {error && <p role="alert" className="text-sm text-red-300">{error}</p>}
+                    <PasswordInput
+                        label="Password (at least 6 characters)"
+                        autoComplete="new-password"
+                        value={password}
+                        onChange={(event) => {
+                            setPassword(event.target.value)
+                            setPasswordError('')
+                        }}
+                        minLength={6}
+                    />
+                    <p className="-mt-3 text-xs text-slate-500">
+                        You’ll be signed in automatically after creating your account.
+                    </p>
+                    {(passwordError || error) && (
+                        <p role="alert" className="text-sm text-red-300">
+                            {passwordError || getFriendlyPasswordError(error)}
+                        </p>
+                    )}
                     <Button type="submit" disabled={status === 'loading'}>
                         {status === 'loading' ? 'Creating account...' : 'Create account'}
                     </Button>
-                    <Link to="/login" className="text-sm text-brand-400 hover:text-brand-300">
-                        Back to sign in
-                    </Link>
+                    <p className="text-sm text-slate-400">
+                        Already have an account?{' '}
+                        <Link to="/login" className="text-brand-400 hover:text-brand-300">
+                            Sign in
+                        </Link>
+                    </p>
                 </form>
             </main>
             <Footer />

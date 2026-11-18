@@ -3,7 +3,8 @@ const jwt = require('jsonwebtoken')
 const User = require('../models/User')
 const { getJwtSecret } = require('../middleware/requireAuth')
 
-const PASSWORD_MIN_LENGTH = 12
+const USER_PASSWORD_MIN_LENGTH = 6
+const ADMIN_PASSWORD_MIN_LENGTH = 12
 
 function normalizeEmail(email) {
     return typeof email === 'string' ? email.trim().toLowerCase() : ''
@@ -37,13 +38,13 @@ async function register(req, res) {
 
     if (
         typeof password !== 'string' ||
-        password.length < PASSWORD_MIN_LENGTH ||
+        password.length < USER_PASSWORD_MIN_LENGTH ||
         password.length > 128 ||
         Buffer.byteLength(password, 'utf8') > 72
     ) {
         return res.status(400).json({
             success: false,
-            message: `Password must be ${PASSWORD_MIN_LENGTH}-128 characters and no more than 72 UTF-8 bytes`,
+            message: `Please choose a password with at least ${USER_PASSWORD_MIN_LENGTH} characters. Passwords must be no more than 72 bytes.`,
         })
     }
     if (email === configuredAdminEmail) {
@@ -58,8 +59,11 @@ async function register(req, res) {
         const user = await User.create({ email, passwordHash })
         return res.status(201).json({
             success: true,
-            message: 'Account created. Administrator approval is required to manage events.',
-            data: { id: String(user._id), email: user.email, role: user.role },
+            message: 'Account created successfully.',
+            data: {
+                token: createToken(user),
+                user: { id: String(user._id), email: user.email, role: user.role },
+            },
         })
     } catch (error) {
         if (error.code === 11000) {
@@ -134,17 +138,20 @@ async function login(req, res) {
 async function changePassword(req, res) {
     const currentPassword = req.body?.currentPassword
     const newPassword = req.body?.newPassword
+    const minimumLength = req.auth.role === 'admin'
+        ? ADMIN_PASSWORD_MIN_LENGTH
+        : USER_PASSWORD_MIN_LENGTH
 
     if (
         typeof currentPassword !== 'string' ||
         typeof newPassword !== 'string' ||
-        newPassword.length < PASSWORD_MIN_LENGTH ||
+        newPassword.length < minimumLength ||
         newPassword.length > 128 ||
         Buffer.byteLength(newPassword, 'utf8') > 72
     ) {
         return res.status(400).json({
             success: false,
-            message: `New password must be ${PASSWORD_MIN_LENGTH}-128 characters and no more than 72 UTF-8 bytes`,
+            message: `Please choose a new password with at least ${minimumLength} characters. Passwords must be no more than 72 bytes.`,
         })
     }
 
@@ -189,10 +196,10 @@ async function bootstrapAdmin() {
         !email ||
         !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ||
         typeof password !== 'string' ||
-        password.length < PASSWORD_MIN_LENGTH ||
+        password.length < ADMIN_PASSWORD_MIN_LENGTH ||
         password.length > 128
     ) {
-        throw new Error(`Configure a valid ADMIN_EMAIL and an ADMIN_PASSWORD of ${PASSWORD_MIN_LENGTH}-128 characters`)
+        throw new Error(`Configure a valid ADMIN_EMAIL and an ADMIN_PASSWORD of ${ADMIN_PASSWORD_MIN_LENGTH}-128 characters`)
     }
 
     const existing = await User.findOne({ email }).select('+passwordHash')

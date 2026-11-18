@@ -86,7 +86,10 @@ export async function login(credentials) {
 
 export async function register(credentials) {
     const response = await api.post('/auth/register', credentials)
-    return response.data
+    return {
+        ...response.data.data,
+        message: response.data.message,
+    }
 }
 
 export async function changePassword(credentials) {

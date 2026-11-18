@@ -1,16 +1,23 @@
 import { useState } from "react"
+import { useDispatch, useSelector } from "react-redux"
 import { Link, NavLink } from "react-router"
 import Button from "../common/Button"
+import { logout } from "../../features/auth/authSlice"
 
-const navigation = [
-    { label: 'Home', to: '/' },
-    { label: 'Explore Events', to: '/events' },
-    { label: 'Favorites', to: '/favorites' },
-    { label: 'Event Manager', to: '/manage-events' },
-
-]
 function Navbar() {
     const [isMenuOpen, setIsMenuOpen] = useState(false)
+    const dispatch = useDispatch()
+    const user = useSelector((state) => state.auth.user)
+    const navigation = [
+        { label: 'Home', to: '/' },
+        ...(user ? [
+            { label: 'Explore Events', to: '/events' },
+            { label: 'Favorites', to: '/favorites' },
+        ] : []),
+        ...(user?.role === 'admin'
+            ? [{ label: 'Event Manager', to: '/manage-events' }]
+            : []),
+    ]
 
     const getLinkClass = ({ isActive }) =>
         `text-sm font-medium transition-colors ${isActive
@@ -41,11 +48,29 @@ function Navbar() {
                         </NavLink>
                     ))}
                 </div>
-{/* Desktop Action */}
-                <div className="hidden md:block">
-                    <Link to="/events">
-                        <Button>Explore Events</Button>
-                    </Link>
+                <div className="hidden items-center gap-4 md:flex">
+                    {user ? (
+                        <>
+                            <span className="max-w-40 truncate text-sm text-slate-400" title={user.email}>
+                                {user.email}
+                            </span>
+                            <Button variant="secondary" onClick={() => dispatch(logout())}>
+                                Sign out
+                            </Button>
+                        </>
+                    ) : (
+                        <>
+                            <Link to="/login" className="text-sm font-semibold text-slate-300 hover:text-white">
+                                Sign in
+                            </Link>
+                            <Link
+                                to="/register"
+                                className="rounded-xl bg-brand-600 px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-brand-700"
+                            >
+                                Sign up
+                            </Link>
+                        </>
+                    )}
                 </div>
                 <button
                     type="button"
@@ -72,12 +97,37 @@ function Navbar() {
                             </NavLink>
                         ))}
 
-                        <Link
-                            to="/events"
-                            onClick={() => setIsMenuOpen(false)}
-                        >
-                            <Button>Explore Events</Button>
-                        </Link>
+                        {user ? (
+                            <>
+                                <span className="truncate text-sm text-slate-400">{user.email}</span>
+                                <Button
+                                    variant="secondary"
+                                    onClick={() => {
+                                        dispatch(logout())
+                                        setIsMenuOpen(false)
+                                    }}
+                                >
+                                    Sign out
+                                </Button>
+                            </>
+                        ) : (
+                            <>
+                                <Link
+                                    to="/login"
+                                    onClick={() => setIsMenuOpen(false)}
+                                    className="text-sm font-semibold text-slate-300"
+                                >
+                                    Sign in
+                                </Link>
+                                <Link
+                                    to="/register"
+                                    onClick={() => setIsMenuOpen(false)}
+                                    className="text-sm font-semibold text-brand-400"
+                                >
+                                    Sign up
+                                </Link>
+                            </>
+                        )}
                     </div>
                 </div>
             )}
