@@ -5,6 +5,13 @@ import Footer from '../Components/layout/Footer'
 import EventImage from '../Components/common/EventImage'
 import { cancelBooking, getMyBookings } from '../services/eventService'
 
+function formatBookingDate(date) {
+    if (!date) return ''
+    const parsedDate = new Date(date)
+    if (Number.isNaN(parsedDate.getTime())) return ''
+    return new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(parsedDate)
+}
+
 function MyBookingsPage() {
     const [state, setState] = useState({ status: 'loading', bookings: [], error: '' })
 
@@ -35,7 +42,7 @@ function MyBookingsPage() {
             <div className="mt-8 grid gap-4">
                 {state.bookings.map((booking) => <article key={booking._id} className="flex flex-col gap-5 rounded-2xl border border-surface-border bg-surface-card p-5 sm:flex-row">
                     <EventImage src={booking.event?.image} alt={booking.event?.title || 'Event'} className="h-32 w-full rounded-xl object-cover sm:w-44" />
-                    <div className="flex-1"><p className="text-sm text-brand-400">{booking.status === 'paid' ? 'Confirmed' : booking.status === 'pending' ? 'Payment pending' : 'Cancelled'}</p><h2 className="mt-1 text-xl font-semibold">{booking.event?.title || 'Removed event'}</h2><p className="mt-2 text-sm text-slate-400">{booking.event?.location} · {booking.event?.date}</p><p className="mt-3">{booking.quantity} ticket{booking.quantity === 1 ? '' : 's'} · ₹{booking.totalPrice}</p>{booking.status === 'paid' && <p className="mt-2 text-sm text-emerald-300">Ticket code: {booking.ticketCode}</p>}{booking.status === 'pending' && <button type="button" onClick={() => handleCancel(booking._id)} className="mt-4 rounded-lg border border-red-500/50 px-4 py-2 text-sm font-semibold text-red-300 hover:bg-red-500/10">Cancel reservation</button>}</div>
+                    <div className="flex-1"><p className="text-sm text-brand-400">{booking.status === 'paid' ? 'Confirmed' : booking.status === 'pending' ? 'Payment pending' : 'Cancelled'}</p><h2 className="mt-1 text-xl font-semibold">{booking.event?.title || 'Removed event'}</h2><p className="mt-2 text-sm text-slate-400">{booking.event?.location} · {booking.event?.date}</p>{formatBookingDate(booking.createdAt) && <p className="mt-2 text-sm text-slate-400">Booked on {formatBookingDate(booking.createdAt)}</p>}<p className="mt-3">{booking.quantity} ticket{booking.quantity === 1 ? '' : 's'} · ₹{booking.totalPrice}</p>{booking.status === 'paid' && <p className="mt-2 text-sm text-emerald-300">Ticket code: {booking.ticketCode}</p>}{booking.status === 'pending' && <button type="button" onClick={() => handleCancel(booking._id)} className="mt-4 rounded-lg border border-red-500/50 px-4 py-2 text-sm font-semibold text-red-300 hover:bg-red-500/10">Cancel reservation</button>}</div>
                 </article>)}
             </div>
         </main><Footer />

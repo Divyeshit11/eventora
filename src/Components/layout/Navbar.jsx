@@ -37,7 +37,7 @@ function Navbar() {
                     Eventora <span className="text-brand-500">.</span>
                 </Link>
                 {/* Desktop Navigation */}
-                <div className="hidden items-center gap-8 md:flex">
+                <div className="hidden items-center gap-8 lg:flex">
                     {navigation.map((item) => (
                         <NavLink
                             key={item.to}
@@ -49,7 +49,7 @@ function Navbar() {
                         </NavLink>
                     ))}
                 </div>
-                <div className="hidden items-center gap-4 md:flex">
+                <div className="hidden items-center gap-4 lg:flex">
                     {user ? (
                         <>
                             <span className="max-w-40 truncate text-sm text-slate-400" title={user.email}>
@@ -75,7 +75,7 @@ function Navbar() {
                 </div>
                 <button
                     type="button"
-                    className="rounded-lg border border-surface-border px-3 py-2 text-white md:hidden"
+                    className="rounded-lg border border-surface-border px-3 py-2 text-white lg:hidden"
                     aria-label={isMenuOpen ? 'Close menu' : 'Open menu'}
                     aria-expanded={isMenuOpen}
                     onClick={() => setIsMenuOpen((open) => !open)}
@@ -85,7 +85,7 @@ function Navbar() {
             </nav>
 
             {isMenuOpen && (
-                <div className="border-t border-surface-border px-4 py-4 md:hidden">
+                <div className="border-t border-surface-border px-4 py-4 lg:hidden">
                     <div className="flex flex-col gap-4">
                         {navigation.map((item) => (
                             <NavLink

@@ -3,9 +3,17 @@ const { once } = require('node:events')
 const test = require('node:test')
 const { parse } = require('csv-parse/sync')
 const bcrypt = require('bcryptjs')
+const emailService = require('../services/emailService')
 process.env.JWT_SECRET = 'automated-test-signing-secret-with-adequate-length'
+process.env.CLIENT_URL = 'http://localhost:5173'
 const Event = require('../models/Event')
 const User = require('../models/User')
+let sentPasswordResetEmail
+let failPasswordResetEmail = false
+emailService.sendPasswordResetEmail = async (email, resetUrl) => {
+    if (failPasswordResetEmail) throw new Error('SMTP unavailable')
+    sentPasswordResetEmail = { email, resetUrl }
+}
 const { app } = require('../server')
 
 test('authentication, event API CRUD, pagination, and CSV workflows', async () => {
@@ -27,8 +35,37 @@ test('authentication, event API CRUD, pagination, and CSV workflows', async () =
         select: async () => [...users.values()].find((user) => user._id === id) || null,
     })
     User.findOne = (query) => ({
-        select: async () => users.get(query.email) || null,
+        select: async () => {
+            if (query.email) return users.get(query.email) || null
+            return [...users.values()].find((user) =>
+                user.passwordResetTokenHash === query.passwordResetTokenHash &&
+                user.passwordResetExpiresAt > query.passwordResetExpiresAt.$gt
+            ) || null
+        },
     })
+    User.updateOne = async (query, update) => {
+        const user = [...users.values()].find((candidate) =>
+            candidate._id === query._id &&
+            candidate.passwordResetTokenHash === query.passwordResetTokenHash
+        )
+        if (!user) return { matchedCount: 0 }
+        for (const field of Object.keys(update.$unset || {})) delete user[field]
+        return { matchedCount: 1 }
+    }
+    User.findOneAndUpdate = async (query, update) => {
+        const user = [...users.values()].find((candidate) =>
+            candidate._id === query._id &&
+            candidate.passwordResetTokenHash === query.passwordResetTokenHash &&
+            candidate.passwordResetExpiresAt > query.passwordResetExpiresAt.$gt
+        )
+        if (!user) return null
+        Object.assign(user, update.$set)
+        for (const [field, amount] of Object.entries(update.$inc || {})) {
+            user[field] = (user[field] || 0) + amount
+        }
+        for (const field of Object.keys(update.$unset || {})) delete user[field]
+        return user
+    }
     User.create = async (data) => {
         const user = {
             _id: makeId(),
@@ -99,6 +136,7 @@ test('authentication, event API CRUD, pagination, and CSV workflows', async () =
     const baseUrl = `http://127.0.0.1:${server.address().port}/api`
 
     try {
+        sentPasswordResetEmail = null
         let response = await fetch(`${baseUrl}/events`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -170,11 +208,99 @@ test('authentication, event API CRUD, pagination, and CSV workflows', async () =
         })
         assert.equal(response.status, 200)
         const userToken = (await response.json()).data.token
+        response = await fetch(`${baseUrl}/auth/forgot-password`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email: 'REGULAR@example.test' }),
+        })
+        assert.equal(response.status, 200)
+        assert.match((await response.json()).message, /if an account exists/i)
+        assert.equal(sentPasswordResetEmail.email, 'regular@example.test')
+        const resetToken = new URLSearchParams(
+            new URL(sentPasswordResetEmail.resetUrl).hash.slice(1)
+        ).get('token')
+        assert.match(resetToken, /^[a-f0-9]{64}$/)
+        const resetUser = [...users.values()].find((user) => user.email === 'regular@example.test')
+        assert.notEqual(resetUser.passwordResetTokenHash, resetToken)
+        assert.ok(resetUser.passwordResetExpiresAt > new Date())
+
+        const resetRequest = (token, password) => fetch(`${baseUrl}/auth/reset-password`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ token, password }),
+        })
+        response = await resetRequest('a'.repeat(64), 'new-regular-password-123')
+        assert.equal(response.status, 400)
+        resetUser.passwordResetExpiresAt = new Date(Date.now() - 1000)
+        response = await resetRequest(resetToken, 'new-regular-password-123')
+        assert.equal(response.status, 400)
+
+        response = await fetch(`${baseUrl}/auth/forgot-password`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email: 'regular@example.test' }),
+        })
+        assert.equal(response.status, 200)
+        const freshResetToken = new URLSearchParams(
+            new URL(sentPasswordResetEmail.resetUrl).hash.slice(1)
+        ).get('token')
+        response = await resetRequest(resetToken, 'short')
+        assert.equal(response.status, 400)
+        response = await resetRequest(freshResetToken, 'new-regular-password-123')
+        assert.equal(response.status, 200)
+        assert.match((await response.json()).message, /sign in/i)
+        response = await resetRequest(freshResetToken, 'another-password-123')
+        assert.equal(response.status, 400)
+
+        response = await fetch(`${baseUrl}/events`, {
+            headers: { Authorization: `Bearer ${userToken}` },
+        })
+        assert.equal(response.status, 401)
+        response = await fetch(`${baseUrl}/auth/login`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                email: 'regular@example.test',
+                password: 'new-regular-password-123',
+            }),
+        })
+        assert.equal(response.status, 200)
+        const renewedUserToken = (await response.json()).data.token
+
+        sentPasswordResetEmail = null
+        response = await fetch(`${baseUrl}/auth/forgot-password`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email: 'unknown@example.test' }),
+        })
+        assert.equal(response.status, 200)
+        assert.match((await response.json()).message, /if an account exists/i)
+        assert.equal(sentPasswordResetEmail, null)
+
+        failPasswordResetEmail = true
+        response = await fetch(`${baseUrl}/auth/forgot-password`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email: 'regular@example.test' }),
+        })
+        assert.equal(response.status, 200)
+        assert.match((await response.json()).message, /if an account exists/i)
+        assert.equal(resetUser.passwordResetTokenHash, undefined)
+        failPasswordResetEmail = false
+
+        response = await fetch(`${baseUrl}/auth/forgot-password`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email: 'still-unknown@example.test' }),
+        })
+        assert.equal(response.status, 200)
+        assert.match((await response.json()).message, /if an account exists/i)
+
         response = await fetch(`${baseUrl}/events`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                Authorization: `Bearer ${userToken}`,
+                Authorization: `Bearer ${renewedUserToken}`,
             },
             body: JSON.stringify({ title: 'Blocked for regular user' }),
         })

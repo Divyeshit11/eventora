@@ -97,6 +97,16 @@ export async function changePassword(credentials) {
     return response.data
 }
 
+export async function requestPasswordReset(email) {
+    const response = await api.post('/auth/forgot-password', { email })
+    return response.data
+}
+
+export async function resetPassword(credentials) {
+    const response = await api.post('/auth/reset-password', credentials)
+    return response.data
+}
+
 export async function createPaymentOrder(eventId, quantity) {
     const response = await api.post('/payments/create-order', { eventId, quantity })
     return response.data.data

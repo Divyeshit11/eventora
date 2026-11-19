@@ -11,6 +11,8 @@ import { logout } from './features/auth/authSlice'
 import LoginPage from './pages/LoginPage'
 import RegisterPage from './pages/RegisterPage'
 import MyBookingsPage from './pages/MyBookingsPage'
+import ForgotPasswordPage from './pages/ForgotPasswordPage'
+import ResetPasswordPage from './pages/ResetPasswordPage'
 
 function RequireAuth({ children, adminOnly = false }) {
   const user = useSelector((state) => state.auth.user)
@@ -45,6 +47,8 @@ function App() {
       />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
+      <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+      <Route path="/reset-password" element={<ResetPasswordPage />} />
       <Route path="/favorites" element={<RequireAuth><FavoritesPage /></RequireAuth>} />
       <Route path="/bookings" element={<RequireAuth><MyBookingsPage /></RequireAuth>} />
       <Route path="*" element={<NotFoundPage />} />

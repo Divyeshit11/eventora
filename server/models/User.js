@@ -26,8 +26,18 @@ const userSchema = new mongoose.Schema(
             default: 0,
             min: 0,
         },
+        passwordResetTokenHash: {
+            type: String,
+            select: false,
+        },
+        passwordResetExpiresAt: {
+            type: Date,
+            select: false,
+        },
     },
     { timestamps: true }
 )
+
+userSchema.index({ passwordResetTokenHash: 1, passwordResetExpiresAt: 1 })
 
 module.exports = mongoose.model('User', userSchema)

@@ -1,10 +1,15 @@
 const bcrypt = require('bcryptjs')
+const crypto = require('crypto')
 const jwt = require('jsonwebtoken')
 const User = require('../models/User')
 const { getJwtSecret } = require('../middleware/requireAuth')
+const { sendPasswordResetEmail } = require('../services/emailService')
 
 const USER_PASSWORD_MIN_LENGTH = 6
 const ADMIN_PASSWORD_MIN_LENGTH = 12
+const PASSWORD_RESET_TTL_MS = 15 * 60 * 1000
+const RESET_REQUEST_MESSAGE = 'If an account exists for that email, a password reset link has been sent.'
+const INVALID_RESET_MESSAGE = 'This password reset link is invalid or expired.'
 
 function normalizeEmail(email) {
     return typeof email === 'string' ? email.trim().toLowerCase() : ''
@@ -180,6 +185,120 @@ async function changePassword(req, res) {
     }
 }
 
+async function requestPasswordReset(req, res) {
+    const email = normalizeEmail(req.body?.email)
+    if (!email || email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        return res.status(400).json({
+            success: false,
+            message: 'A valid email address is required',
+        })
+    }
+
+    try {
+        const user = await User.findOne({ email })
+            .select('+passwordResetTokenHash +passwordResetExpiresAt')
+        if (!user) {
+            return res.status(200).json({ success: true, message: RESET_REQUEST_MESSAGE })
+        }
+
+        const token = crypto.randomBytes(32).toString('hex')
+        const tokenHash = crypto.createHash('sha256').update(token).digest('hex')
+        user.passwordResetTokenHash = tokenHash
+        user.passwordResetExpiresAt = new Date(Date.now() + PASSWORD_RESET_TTL_MS)
+        await user.save()
+
+        try {
+            const frontendOrigin = process.env.CLIENT_URL?.split(',')[0].trim()
+            if (!frontendOrigin) throw new Error('CLIENT_URL must be configured to send password reset links')
+            const resetUrl = new URL('/reset-password', frontendOrigin)
+            resetUrl.hash = new URLSearchParams({ token }).toString()
+            await sendPasswordResetEmail(user.email, resetUrl.toString())
+        } catch (error) {
+            await User.updateOne(
+                { _id: user._id, passwordResetTokenHash: tokenHash },
+                { $unset: { passwordResetTokenHash: 1, passwordResetExpiresAt: 1 } }
+            )
+            console.error('Password reset email delivery failed:', error.message)
+            return res.status(200).json({ success: true, message: RESET_REQUEST_MESSAGE })
+        }
+
+        return res.status(200).json({ success: true, message: RESET_REQUEST_MESSAGE })
+    } catch (error) {
+        console.error('Password reset request failed:', error.message)
+        return res.status(200).json({ success: true, message: RESET_REQUEST_MESSAGE })
+    }
+}
+
+async function resetPassword(req, res) {
+    const token = req.body?.token
+    const password = req.body?.password
+    if (
+        typeof token !== 'string' ||
+        !/^[a-f0-9]{64}$/i.test(token) ||
+        typeof password !== 'string' ||
+        password.length > 128 ||
+        Buffer.byteLength(password, 'utf8') > 72
+    ) {
+        return res.status(400).json({
+            success: false,
+            message: 'A valid reset link and password are required',
+        })
+    }
+
+    try {
+        const tokenHash = crypto.createHash('sha256').update(token).digest('hex')
+        const user = await User.findOne({
+            passwordResetTokenHash: tokenHash,
+            passwordResetExpiresAt: { $gt: new Date() },
+        }).select('+passwordHash +passwordResetTokenHash +passwordResetExpiresAt')
+        if (!user) {
+            return res.status(400).json({ success: false, message: INVALID_RESET_MESSAGE })
+        }
+
+        const minimumLength = user.role === 'admin'
+            ? ADMIN_PASSWORD_MIN_LENGTH
+            : USER_PASSWORD_MIN_LENGTH
+        if (password.length < minimumLength) {
+            return res.status(400).json({
+                success: false,
+                message: `Please choose a password with at least ${minimumLength} characters. Passwords must be no more than 72 bytes.`,
+            })
+        }
+
+        const passwordHash = await bcrypt.hash(password, 12)
+        const updatedUser = await User.findOneAndUpdate(
+            {
+                _id: user._id,
+                passwordResetTokenHash: tokenHash,
+                passwordResetExpiresAt: { $gt: new Date() },
+            },
+            {
+                $set: { passwordHash },
+                $inc: { tokenVersion: 1 },
+                $unset: {
+                    passwordResetTokenHash: 1,
+                    passwordResetExpiresAt: 1,
+                },
+            },
+            { new: true }
+        )
+        if (!updatedUser) {
+            return res.status(400).json({ success: false, message: INVALID_RESET_MESSAGE })
+        }
+
+        return res.status(200).json({
+            success: true,
+            message: 'Password reset successfully. Please sign in with your new password.',
+        })
+    } catch (error) {
+        console.error('Password reset failed:', error.message)
+        return res.status(500).json({
+            success: false,
+            message: 'Unable to reset the password',
+        })
+    }
+}
+
 async function bootstrapAdmin() {
     const email = normalizeEmail(process.env.ADMIN_EMAIL)
     const password = process.env.ADMIN_PASSWORD
@@ -218,4 +337,11 @@ async function bootstrapAdmin() {
     console.log('Initial administrator account created')
 }
 
-module.exports = { bootstrapAdmin, changePassword, login, register }
+module.exports = {
+    bootstrapAdmin,
+    changePassword,
+    login,
+    register,
+    requestPasswordReset,
+    resetPassword,
+}

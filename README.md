@@ -26,6 +26,15 @@ signs the new user in immediately. Administrator credentials still require at
 least 12 characters. Only administrators may create, update, delete, import, or
 export events. Do not commit environment files or credentials.
 
+Password reset is available from the sign-in page. Configure `SMTP_HOST`,
+`SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASSWORD`, and `SMTP_FROM` in the
+backend environment. SMTP authentication is optional when the mail server
+allows trusted unauthenticated delivery; otherwise set both `SMTP_USER` and
+`SMTP_PASSWORD`. Reset links are sent to the first origin in `CLIENT_URL`, expire
+after 15 minutes, and can only be used once. Password reset requests return the
+same response whether or not an account exists. SMTP delivery failures are
+logged by the backend and do not change that response.
+
 ## Event API
 
 - `GET /api/events` and `GET /api/events/:id` require a valid bearer token.
@@ -72,6 +81,9 @@ database:
 - `JWT_SECRET` — a new random value of at least 32 characters.
 - `ADMIN_EMAIL` and `ADMIN_PASSWORD` — credentials used only to create the
   initial administrator when the account does not already exist.
+- `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASSWORD`, and
+  `SMTP_FROM` — credentials and sender for the SMTP service used by password
+  reset emails. Keep SMTP credentials server-side.
 - `TRUST_PROXY=true` and `TRUST_PROXY_HOPS=1`.
 
 Vercel provides `NODE_ENV=production`; do not set `VITE_API_URL` for this
@@ -91,7 +103,8 @@ or CSV imports can succeed.
   `CLIENT_URL` to the exact Netlify URL, for example
   `https://your-site.netlify.app`. After it deploys, open
   `https://<your-render-service>.onrender.com/api/health`; it must return JSON
-  before proceeding.
+  before proceeding. Add the SMTP host, credentials, and sender address to the
+  Render environment before enabling password reset emails.
 - Netlify is configured by [netlify.toml](./netlify.toml) to build with
   `npm run build` and publish `dist`. Connect the repository at its project
   root, then trigger a fresh deployment (clear the build cache if an older
@@ -107,7 +120,7 @@ or CSV imports can succeed.
 - Configure the backend host with `PORT`, `MONGODB_URI` (MongoDB Atlas),
   `MONGODB_DB=eventora`, and
   `CLIENT_URL` (the deployed frontend origin), `JWT_SECRET`, `ADMIN_EMAIL`, and
-  `ADMIN_PASSWORD`. Set `TRUST_PROXY=true` only if the host sits behind its
+  `ADMIN_PASSWORD`, plus the SMTP settings described above. Set `TRUST_PROXY=true` only if the host sits behind its
   documented trusted reverse proxy and set `TRUST_PROXY_HOPS` to the verified
   proxy hop count (1–5). Production `CLIENT_URL` entries must be HTTPS origins.
   Ensure the MongoDB `events` collection has a descending `createdAt` index for

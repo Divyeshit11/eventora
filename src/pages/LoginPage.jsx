@@ -77,6 +77,12 @@ function LoginPage() {
                             setPasswordError('')
                         }}
                     />
+                    <Link
+                        to="/forgot-password"
+                        className="-mt-3 justify-self-end text-sm text-brand-400 hover:text-brand-300"
+                    >
+                        Forgot password?
+                    </Link>
                     {passwordError && (
                         <p role="alert" className="text-sm text-red-300">
                             {passwordError}

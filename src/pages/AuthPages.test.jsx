@@ -5,13 +5,22 @@ import { Provider } from 'react-redux'
 import { MemoryRouter, Route, Routes } from 'react-router'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import authReducer from '../features/auth/authSlice'
-import { login, register } from '../services/eventService'
+import {
+    login,
+    register,
+    requestPasswordReset,
+    resetPassword,
+} from '../services/eventService'
 import LoginPage from './LoginPage'
 import RegisterPage from './RegisterPage'
+import ForgotPasswordPage from './ForgotPasswordPage'
+import ResetPasswordPage from './ResetPasswordPage'
 
 vi.mock('../services/eventService', () => ({
     login: vi.fn(),
     register: vi.fn(),
+    requestPasswordReset: vi.fn(),
+    resetPassword: vi.fn(),
 }))
 
 function renderAuthRoute(path, initialEntry = path) {
@@ -25,6 +34,8 @@ function renderAuthRoute(path, initialEntry = path) {
                 <Routes>
                     <Route path="/login" element={<LoginPage />} />
                     <Route path="/register" element={<RegisterPage />} />
+                    <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+                    <Route path="/reset-password" element={<ResetPasswordPage />} />
                     <Route path="/" element={<h1>Home page</h1>} />
                     <Route path="/events" element={<h1>Events available</h1>} />
                     <Route path="/manage-events" element={<h1>Event manager</h1>} />
@@ -179,5 +190,64 @@ describe('authentication pages', () => {
         expect(passwordInput).toHaveAttribute('type', 'text')
         await user.click(screen.getByRole('button', { name: 'Hide password' }))
         expect(passwordInput).toHaveAttribute('type', 'password')
+    })
+
+    it('sends a password reset request without revealing whether the email is registered', async () => {
+        requestPasswordReset.mockResolvedValue({
+            message: 'If an account exists for that email, a password reset link has been sent.',
+        })
+        const user = userEvent.setup()
+
+        renderAuthRoute('/forgot-password')
+        await user.type(screen.getByLabelText(/email address/i), 'person@example.com')
+        await user.click(screen.getByRole('button', { name: 'Send reset link' }))
+
+        expect(await screen.findByRole('status')).toHaveTextContent(
+            'If an account exists for that email, a password reset link has been sent.',
+        )
+        expect(requestPasswordReset).toHaveBeenCalledWith('person@example.com')
+    })
+
+    it('resets the password with the link token and returns the user to sign in', async () => {
+        resetPassword.mockResolvedValue({
+            message: 'Password reset successfully. Please sign in with your new password.',
+        })
+        const user = userEvent.setup()
+
+        renderAuthRoute('/reset-password', '/reset-password#token=reset-token')
+        await user.type(screen.getByLabelText('New password'), 'new-password-123')
+        await user.type(screen.getByLabelText('Confirm new password'), 'new-password-123')
+        await user.click(screen.getByRole('button', { name: 'Reset password' }))
+
+        expect(await screen.findByRole('heading', { name: 'Sign in to Eventora' })).toBeInTheDocument()
+        expect(screen.getByRole('status')).toHaveTextContent('Password reset successfully.')
+        expect(resetPassword).toHaveBeenCalledWith({
+            token: 'reset-token',
+            password: 'new-password-123',
+        })
+    })
+
+    it('does not submit a reset when the confirmation password does not match', async () => {
+        const user = userEvent.setup()
+
+        renderAuthRoute('/reset-password', '/reset-password#token=reset-token')
+        await user.type(screen.getByLabelText('New password'), 'new-password-123')
+        await user.type(screen.getByLabelText('Confirm new password'), 'different-password')
+        await user.click(screen.getByRole('button', { name: 'Reset password' }))
+
+        expect(screen.getByRole('alert')).toHaveTextContent('Passwords do not match.')
+        expect(resetPassword).not.toHaveBeenCalled()
+    })
+
+    it('asks for a fresh link when the reset token is missing', () => {
+        renderAuthRoute('/reset-password')
+
+        expect(screen.getByRole('alert')).toHaveTextContent(
+            'This password reset link is invalid or expired.',
+        )
+        expect(screen.getByRole('link', { name: 'Request a new reset link' })).toHaveAttribute(
+            'href',
+            '/forgot-password',
+        )
     })
 })

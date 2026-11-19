@@ -21,7 +21,7 @@ function HomePage() {
                                 <span className="h-2 w-2 rounded-full bg-brand-500" />
                                 Good plans start here
                             </span>
-                            <h1 className="mt-7 max-w-2xl text-5xl font-extrabold leading-[1.08] tracking-tight sm:text-6xl lg:text-7xl">
+                            <h1 className="mt-7 max-w-2xl text-4xl font-extrabold leading-[1.08] tracking-tight sm:text-6xl lg:text-7xl">
                                 Make room for
                                 <span className="block text-brand-500">something exciting.</span>
                             </h1>
