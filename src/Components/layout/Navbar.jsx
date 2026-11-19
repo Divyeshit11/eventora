@@ -17,7 +17,7 @@ function Navbar() {
             { label: 'Account', to: '/account' },
         ] : []),
         ...(user?.role === 'admin'
-            ? [{ label: 'Event Manager', to: '/manage-events' }]
+            ? [{ label: 'Event Manager', to: '/manage-events' }, { label: 'Analytics', to: '/analytics' }]
             : []),
     ]
 

@@ -6,21 +6,28 @@ import {
     createEvent as createEventAPI,
     updateEvent as updateEventAPI,
     deleteEvent as deleteEventAPI,
+    getFavorites as getFavoritesAPI,
+    addFavorite as addFavoriteAPI,
+    removeFavorite as removeFavoriteAPI,
 } from '../../services/eventService'
 
-// Load favorites from localStorage
-function loadFavorites() {
+export const fetchFavorites = createAsyncThunk('events/fetchFavorites', async (_, { rejectWithValue }) => {
     try {
-        const savedFavorites = localStorage.getItem('eventora-favorites')
-        const favorites = savedFavorites
-            ? JSON.parse(savedFavorites)
-            : []
-
-        return Array.isArray(favorites) ? favorites : []
-    } catch {
-        return []
+        return await getFavoritesAPI()
+    } catch (error) {
+        return rejectWithValue(error.response?.data?.message || error.message || 'Unable to load favorites')
     }
-}
+})
+
+export const setFavorite = createAsyncThunk('events/setFavorite', async ({ eventId, isFavorite }, { rejectWithValue }) => {
+    try {
+        if (isFavorite) await addFavoriteAPI(eventId)
+        else await removeFavoriteAPI(eventId)
+        return { eventId, isFavorite }
+    } catch (error) {
+        return rejectWithValue(error.response?.data?.message || error.message || 'Unable to update favorite')
+    }
+})
 
 // FETCH EVENTS
 export const fetchEvents = createAsyncThunk(
@@ -109,7 +116,9 @@ const eventsSlice = createSlice({
 
     initialState: {
         items: [],
-        favorites: loadFavorites(),
+        favorites: [],
+        favoritesStatus: 'idle',
+        favoritesError: null,
         pagination: null,
 
         status: 'idle',
@@ -167,6 +176,11 @@ const eventsSlice = createSlice({
                 state.favorites.push(eventId)
             }
         },
+        clearFavorites: (state) => {
+            state.favorites = []
+            state.favoritesStatus = 'idle'
+            state.favoritesError = null
+        },
     },
 
     extraReducers: (builder) => {
@@ -189,6 +203,23 @@ const eventsSlice = createSlice({
                 state.status = 'failed'
                 state.error =
                     action.payload || 'Failed to load events'
+            })
+            .addCase(fetchFavorites.pending, (state) => {
+                state.favoritesStatus = 'loading'
+                state.favoritesError = null
+            })
+            .addCase(fetchFavorites.fulfilled, (state, action) => {
+                state.favoritesStatus = 'succeeded'
+                state.favorites = Array.isArray(action.payload) ? action.payload : []
+            })
+            .addCase(fetchFavorites.rejected, (state, action) => {
+                state.favoritesStatus = 'failed'
+                state.favoritesError = action.payload || 'Unable to load favorites'
+            })
+            .addCase(setFavorite.fulfilled, (state, action) => {
+                const { eventId, isFavorite } = action.payload
+                if (isFavorite && !state.favorites.some((id) => String(id) === String(eventId))) state.favorites.push(eventId)
+                if (!isFavorite) state.favorites = state.favorites.filter((id) => String(id) !== String(eventId))
             })
 
             // CREATE EVENT
@@ -278,6 +309,7 @@ export const {
     addEvent,
     removeEvent,
     toggleFavorite,
+    clearFavorites,
 } = eventsSlice.actions
 
 export default eventsSlice.reducer

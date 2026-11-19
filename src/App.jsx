@@ -8,12 +8,14 @@ import FavoritesPage from './pages/FavoritesPage'
 import { useEffect } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { logout } from './features/auth/authSlice'
+import { clearFavorites, fetchFavorites } from './features/events/eventsSlice'
 import LoginPage from './pages/LoginPage'
 import RegisterPage from './pages/RegisterPage'
 import MyBookingsPage from './pages/MyBookingsPage'
 import ForgotPasswordPage from './pages/ForgotPasswordPage'
 import ResetPasswordPage from './pages/ResetPasswordPage'
 import AccountPage from './pages/AccountPage'
+import AnalyticsPage from './pages/AnalyticsPage'
 
 function RequireAuth({ children, adminOnly = false }) {
   const user = useSelector((state) => state.auth.user)
@@ -30,12 +32,19 @@ function RequireAuth({ children, adminOnly = false }) {
 
 function App() {
   const dispatch = useDispatch()
+  const user = useSelector((state) => state.auth.user)
+  const userId = user?.id
 
   useEffect(() => {
     const handleUnauthorized = () => dispatch(logout())
     window.addEventListener('eventora:unauthorized', handleUnauthorized)
     return () => window.removeEventListener('eventora:unauthorized', handleUnauthorized)
   }, [dispatch])
+
+  useEffect(() => {
+    if (userId) dispatch(fetchFavorites())
+    else dispatch(clearFavorites())
+  }, [dispatch, userId])
 
   return (
     <Routes>
@@ -53,6 +62,7 @@ function App() {
       <Route path="/favorites" element={<RequireAuth><FavoritesPage /></RequireAuth>} />
       <Route path="/bookings" element={<RequireAuth><MyBookingsPage /></RequireAuth>} />
       <Route path="/account" element={<RequireAuth><AccountPage /></RequireAuth>} />
+      <Route path="/analytics" element={<RequireAuth adminOnly><AnalyticsPage /></RequireAuth>} />
       <Route path="*" element={<NotFoundPage />} />
     </Routes>
   )

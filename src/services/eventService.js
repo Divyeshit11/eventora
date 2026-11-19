@@ -127,6 +127,26 @@ export async function cancelBooking(bookingId) {
     return response.data.data
 }
 
+export async function getAdminAnalytics() {
+    const response = await api.get('/analytics')
+    return response.data.data
+}
+
+export async function getFavorites() {
+    const response = await api.get('/users/me/favorites')
+    return response.data.data
+}
+
+export async function addFavorite(eventId) {
+    const response = await api.put(`/users/me/favorites/${eventId}`)
+    return response.data.data
+}
+
+export async function removeFavorite(eventId) {
+    const response = await api.delete(`/users/me/favorites/${eventId}`)
+    return response.data.data
+}
+
 function consumeNdjson(buffer, chunk, onLine) {
     const nextBuffer = `${buffer}${chunk}`
     const lines = nextBuffer.split('\n')

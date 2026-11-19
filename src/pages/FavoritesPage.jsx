@@ -5,7 +5,7 @@ import { Link } from 'react-router'
 import Navbar from '../Components/layout/Navbar'
 import Footer from '../Components/layout/Footer'
 import { selectFavoriteIds } from '../features/events/eventsSelectors'
-import { toggleFavorite } from '../features/events/eventsSlice'
+import { setFavorite } from '../features/events/eventsSlice'
 import EventImage from '../Components/common/EventImage'
 import { getEventId } from '../utils/eventIdentity'
 import { getEventById } from '../services/eventService'
@@ -109,7 +109,7 @@ function FavoritesPage() {
 
                   <button
                     type="button"
-                    onClick={() => dispatch(toggleFavorite(getEventId(event)))}
+                    onClick={() => dispatch(setFavorite({ eventId: getEventId(event), isFavorite: false }))}
                     className="mt-3 rounded-lg border border-pink-500/50 px-4 py-2 text-sm font-semibold text-pink-400 transition hover:bg-pink-500/10"
                   >
                     ♥ Remove Favorite

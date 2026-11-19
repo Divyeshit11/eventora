@@ -2,7 +2,6 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { configureStore } from '@reduxjs/toolkit'
 
 import eventsReducer, { fetchEvents, removeEvent, toggleFavorite } from './eventsSlice'
-import { setupFavoritesPersistence } from '../../app/favoritesPersistence'
 import { getEvents } from '../../services/eventService'
 
 vi.mock('../../services/eventService', () => ({
@@ -17,17 +16,14 @@ describe('eventsSlice', () => {
     localStorage.clear()
   })
 
-  it('toggles favorites and persists them to localStorage', () => {
+  it('toggles favorite ids in state', () => {
     const store = configureStore({ reducer: { events: eventsReducer } })
-    setupFavoritesPersistence(store)
 
     store.dispatch(toggleFavorite('evt-1'))
     expect(store.getState().events.favorites).toEqual(['evt-1'])
-    expect(JSON.parse(localStorage.getItem('eventora-favorites'))).toEqual(['evt-1'])
 
     store.dispatch(toggleFavorite('evt-1'))
     expect(store.getState().events.favorites).toEqual([])
-    expect(JSON.parse(localStorage.getItem('eventora-favorites'))).toEqual([])
   })
 
   it('removes favorite ids when an event is deleted', () => {

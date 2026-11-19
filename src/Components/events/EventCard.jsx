@@ -4,7 +4,7 @@ import Badge from '../common/Badge';
 import Button from '../common/Button';
 import EventImage from '../common/EventImage'
 import { useDispatch, useSelector } from 'react-redux'
-import { toggleFavorite } from '../../features/events/eventsSlice'
+import { setFavorite } from '../../features/events/eventsSlice'
 import { selectFavoriteIds } from '../../features/events/eventsSelectors'
 import { getEventId } from '../../utils/eventIdentity'
 
@@ -55,7 +55,7 @@ function EventCard({ event }) {
 
         <button
         type="button"
-        onClick={() => dispatch(toggleFavorite(eventId))}
+        onClick={() => dispatch(setFavorite({ eventId, isFavorite: !isFavorite }))}
         aria-pressed={isFavorite}
         aria-label={
           isFavorite

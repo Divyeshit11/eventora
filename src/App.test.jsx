@@ -12,6 +12,7 @@ vi.mock('./services/eventService', () => ({
   createEvent: vi.fn(),
   updateEvent: vi.fn(),
   deleteEvent: vi.fn(),
+  getAdminAnalytics: vi.fn(),
   login: vi.fn(),
   register: vi.fn(),
 }))

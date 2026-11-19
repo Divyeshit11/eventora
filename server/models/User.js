@@ -34,6 +34,10 @@ const userSchema = new mongoose.Schema(
             type: Date,
             select: false,
         },
+        favoriteEvents: [{
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'Event',
+        }],
     },
     { timestamps: true }
 )
