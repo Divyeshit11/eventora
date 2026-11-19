@@ -41,6 +41,25 @@ const eventSchema = new Schema(
       min: [0, 'Event price cannot be negative'],
     },
 
+    ticketCapacity: {
+      type: Number,
+      default: 100,
+      min: [1, 'Ticket capacity must be at least 1'],
+      max: [100000, 'Ticket capacity cannot exceed 100000'],
+    },
+
+    ticketsSold: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+
+    organizer: {
+      type: Schema.Types.ObjectId,
+      ref: 'User',
+      default: null,
+    },
+
     image: {
       type: String,
       default: '',

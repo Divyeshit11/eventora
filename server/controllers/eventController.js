@@ -8,6 +8,7 @@ const EVENT_FIELDS = [
     'location',
     'date',
     'price',
+    'ticketCapacity',
     'image',
     'description',
 ]
@@ -160,7 +161,7 @@ async function createEvent(req, res) {
             })
         }
 
-        const event = await Event.create(payload)
+        const event = await Event.create({ ...payload, organizer: req.auth.sub })
         return res.status(201).json({
             success: true,
             message: 'Event created successfully',
@@ -194,6 +195,16 @@ async function updateEvent(req, res) {
         if (!payload) return sendBadRequest(res, 'Event data must be a JSON object')
         if (Object.keys(payload).length === 0) {
             return sendBadRequest(res, 'Provide at least one event field to update')
+        }
+
+        if (payload.ticketCapacity !== undefined) {
+            const currentEvent = await Event.findById(req.params.id).select('ticketsSold')
+            if (!currentEvent) {
+                return res.status(404).json({ success: false, message: 'Event not found' })
+            }
+            if (Number(payload.ticketCapacity) < currentEvent.ticketsSold) {
+                return sendBadRequest(res, 'Ticket capacity cannot be lower than tickets already sold')
+            }
         }
 
         const event = await Event.findByIdAndUpdate(

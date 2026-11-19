@@ -2,6 +2,9 @@ const express = require('express')
 const connectDB = require('./config/db')
 const eventRoutes = require('./routes/eventRoutes')
 const authRoutes = require('./routes/authRoutes')
+const bookingRoutes = require('./routes/bookingRoutes')
+const paymentRoutes = require('./routes/paymentRoutes')
+const { razorpayWebhook } = require('./controllers/paymentController')
 const cors = require('cors')
 const helmet = require('helmet')
 const rateLimit = require('express-rate-limit')
@@ -52,6 +55,8 @@ app.use(cors({
         callback(new Error('Origin is not allowed by CORS'))
     },
 }))
+// This must stay before express.json(): provider signatures are calculated from raw bytes.
+app.post('/api/payments/razorpay/webhook', express.raw({ type: 'application/json' }), razorpayWebhook)
 app.use(express.json({ limit: '1mb' }))
 app.use('/api', rateLimit({
     windowMs: 15 * 60 * 1000,
@@ -62,6 +67,8 @@ app.use('/api', rateLimit({
 
 app.use('/api/auth', authRoutes)
 app.use('/api/events', eventRoutes)
+app.use('/api/bookings', bookingRoutes)
+app.use('/api/payments', paymentRoutes)
 
 app.get('/api/health', (req, res) => {
     res.status(200).json({

@@ -10,6 +10,7 @@ import { useDispatch, useSelector } from 'react-redux'
 import { logout } from './features/auth/authSlice'
 import LoginPage from './pages/LoginPage'
 import RegisterPage from './pages/RegisterPage'
+import MyBookingsPage from './pages/MyBookingsPage'
 
 function RequireAuth({ children, adminOnly = false }) {
   const user = useSelector((state) => state.auth.user)
@@ -45,6 +46,7 @@ function App() {
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
       <Route path="/favorites" element={<RequireAuth><FavoritesPage /></RequireAuth>} />
+      <Route path="/bookings" element={<RequireAuth><MyBookingsPage /></RequireAuth>} />
       <Route path="*" element={<NotFoundPage />} />
     </Routes>
   )

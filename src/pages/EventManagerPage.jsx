@@ -25,6 +25,7 @@ const emptyForm = {
     location: '',
     date: '',
     price: '',
+    ticketCapacity: '100',
     image: '',
     description: '',
 }
@@ -84,6 +85,7 @@ function EventManagerPage() {
             location: event.location || '',
             date: event.date?.slice(0, 10) || '',
             price: String(event.price ?? ''),
+            ticketCapacity: String(event.ticketCapacity ?? 100),
             image: event.image || '',
             description: event.description || '',
         })
@@ -100,6 +102,7 @@ function EventManagerPage() {
         const payload = {
             ...formData,
             price: Number(formData.price),
+            ticketCapacity: Number(formData.ticketCapacity),
         }
         const result = isEditing
             ? await dispatch(updateEventThunk({ id: editingId, eventData: payload }))
@@ -298,6 +301,20 @@ function EventManagerPage() {
                             min="0"
                             step="0.01"
                             value={formData.price}
+                            onChange={handleChange}
+                            className="rounded-lg border border-surface-border bg-surface px-3 py-3 text-white"
+                            required
+                        />
+                    </label>
+                    <label className="grid gap-2 text-sm text-slate-300">
+                        Ticket Capacity
+                        <input
+                            type="number"
+                            name="ticketCapacity"
+                            min="1"
+                            max="100000"
+                            step="1"
+                            value={formData.ticketCapacity}
                             onChange={handleChange}
                             className="rounded-lg border border-surface-border bg-surface px-3 py-3 text-white"
                             required

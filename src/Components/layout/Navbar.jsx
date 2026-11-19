@@ -13,6 +13,7 @@ function Navbar() {
         ...(user ? [
             { label: 'Explore Events', to: '/events' },
             { label: 'Favorites', to: '/favorites' },
+            { label: 'My Bookings', to: '/bookings' },
         ] : []),
         ...(user?.role === 'admin'
             ? [{ label: 'Event Manager', to: '/manage-events' }]

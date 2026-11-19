@@ -97,6 +97,26 @@ export async function changePassword(credentials) {
     return response.data
 }
 
+export async function createPaymentOrder(eventId, quantity) {
+    const response = await api.post('/payments/create-order', { eventId, quantity })
+    return response.data.data
+}
+
+export async function verifyPayment(paymentData) {
+    const response = await api.post('/payments/verify', paymentData)
+    return response.data.data
+}
+
+export async function getMyBookings() {
+    const response = await api.get('/bookings/me')
+    return response.data.data
+}
+
+export async function cancelBooking(bookingId) {
+    const response = await api.patch(`/bookings/${bookingId}/cancel`)
+    return response.data.data
+}
+
 function consumeNdjson(buffer, chunk, onLine) {
     const nextBuffer = `${buffer}${chunk}`
     const lines = nextBuffer.split('\n')
