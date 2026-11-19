@@ -13,6 +13,7 @@ import RegisterPage from './pages/RegisterPage'
 import MyBookingsPage from './pages/MyBookingsPage'
 import ForgotPasswordPage from './pages/ForgotPasswordPage'
 import ResetPasswordPage from './pages/ResetPasswordPage'
+import AccountPage from './pages/AccountPage'
 
 function RequireAuth({ children, adminOnly = false }) {
   const user = useSelector((state) => state.auth.user)
@@ -51,6 +52,7 @@ function App() {
       <Route path="/reset-password" element={<ResetPasswordPage />} />
       <Route path="/favorites" element={<RequireAuth><FavoritesPage /></RequireAuth>} />
       <Route path="/bookings" element={<RequireAuth><MyBookingsPage /></RequireAuth>} />
+      <Route path="/account" element={<RequireAuth><AccountPage /></RequireAuth>} />
       <Route path="*" element={<NotFoundPage />} />
     </Routes>
   )

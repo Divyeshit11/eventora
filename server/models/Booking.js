@@ -14,6 +14,10 @@ const bookingSchema = new Schema(
         paymentVerifiedAt: Date,
         reservationExpiresAt: { type: Date, index: true },
         ticketCode: { type: String, unique: true, sparse: true },
+        confirmationEmailSentAt: Date,
+        confirmationEmailInProgressAt: Date,
+        reminderEmailSentAt: Date,
+        reminderEmailInProgressAt: Date,
     },
     { timestamps: true }
 )

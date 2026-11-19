@@ -3,6 +3,7 @@ const Razorpay = require('razorpay')
 const mongoose = require('mongoose')
 const Booking = require('../models/Booking')
 const Event = require('../models/Event')
+const { sendBookingConfirmation } = require('../services/notificationService')
 
 const RESERVATION_MINUTES = 15
 
@@ -90,6 +91,7 @@ async function verifyPayment(req, res) {
     if (![orderId, paymentId, signature].every(Boolean)) return res.status(400).json({ success: false, message: 'Payment confirmation is incomplete' })
     try {
         const booking = await markPaymentPaid({ orderId, paymentId, signature })
+        await sendBookingConfirmation(booking._id)
         return res.json({ success: true, message: 'Payment verified and booking confirmed', data: booking })
     } catch (error) {
         return res.status(400).json({ success: false, message: error.message === 'Invalid payment signature' ? error.message : 'Payment could not be confirmed' })
@@ -104,10 +106,11 @@ async function razorpayWebhook(req, res) {
     if (!signaturesMatch(expected, signature)) return res.status(400).send('Invalid webhook signature')
     const payment = req.body?.payload?.payment?.entity
     if (req.body?.event === 'payment.captured' && payment?.order_id && payment?.id) {
-        await Booking.findOneAndUpdate(
+        const booking = await Booking.findOneAndUpdate(
             { razorpayOrderId: payment.order_id, status: 'pending' },
             { $set: { status: 'paid', razorpayPaymentId: payment.id, paymentVerifiedAt: new Date(), ticketCode: `EVT-${crypto.randomUUID().slice(0, 8).toUpperCase()}` } }
         )
+        if (booking) await sendBookingConfirmation(booking._id)
     }
     return res.status(200).json({ received: true })
 }

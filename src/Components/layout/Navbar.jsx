@@ -14,6 +14,7 @@ function Navbar() {
             { label: 'Explore Events', to: '/events' },
             { label: 'Favorites', to: '/favorites' },
             { label: 'My Bookings', to: '/bookings' },
+            { label: 'Account', to: '/account' },
         ] : []),
         ...(user?.role === 'admin'
             ? [{ label: 'Event Manager', to: '/manage-events' }]
@@ -52,9 +53,9 @@ function Navbar() {
                 <div className="hidden items-center gap-4 lg:flex">
                     {user ? (
                         <>
-                            <span className="max-w-40 truncate text-sm text-slate-400" title={user.email}>
+                            <Link to="/account" className="max-w-40 truncate text-sm text-slate-400 transition-colors hover:text-white" title={user.email}>
                                 {user.email}
-                            </span>
+                            </Link>
                             <Button variant="secondary" onClick={() => dispatch(logout())}>
                                 Sign out
                             </Button>

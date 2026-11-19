@@ -10,6 +10,7 @@ const helmet = require('helmet')
 const rateLimit = require('express-rate-limit')
 const { bootstrapAdmin } = require('./controllers/authController')
 const { getJwtSecret } = require('./middleware/requireAuth')
+const { runEventReminders } = require('./controllers/notificationController')
 require('dotenv').config()
 
 const app = express()
@@ -69,6 +70,7 @@ app.use('/api/auth', authRoutes)
 app.use('/api/events', eventRoutes)
 app.use('/api/bookings', bookingRoutes)
 app.use('/api/payments', paymentRoutes)
+app.get('/api/internal/event-reminders', runEventReminders)
 
 app.get('/api/health', (req, res) => {
     res.status(200).json({

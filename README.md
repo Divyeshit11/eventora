@@ -35,6 +35,15 @@ after 15 minutes, and can only be used once. Password reset requests return the
 same response whether or not an account exists. SMTP delivery failures are
 logged by the backend and do not change that response.
 
+Paid bookings send a confirmation email with the ticket code. Event reminders run
+daily at 08:00 UTC on Vercel and send once to paid attendees whose event is the
+configured number of UTC days away (one day by default). Set a high-entropy
+`CRON_SECRET`; Vercel uses it as the Bearer token for cron invocations. For
+non-Vercel deployments, schedule a daily authenticated `GET
+/api/internal/event-reminders` request with `Authorization: Bearer
+<CRON_SECRET>`. Set `EVENT_REMINDER_DAYS` (1–30) to change the lead time.
+Email failures are logged and do not affect a confirmed booking.
+
 ## Event API
 
 - `GET /api/events` and `GET /api/events/:id` require a valid bearer token.
