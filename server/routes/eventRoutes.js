@@ -1,14 +1,20 @@
 
 const express = require('express')
 const multer = require('multer')
-const { requireAuth, requireAdmin } = require('../middleware/requireAuth')
+const { requireAuth, requireAdmin, requireOrganizerOrAdmin } = require('../middleware/requireAuth')
 
 const {
     getEvents,
+    getPendingEvents,
     getEventById,
+    getSeatAvailability,
     createEvent,
     updateEvent,
     deleteEvent,
+    setEventModeration,
+    getEventSales,
+    getEventAttendees,
+    exportEventAttendees,
     exportEventsToCsv,
     importEventsFromCsv,
 } = require('../controllers/eventController')
@@ -51,13 +57,20 @@ function uploadCsv(req,res,next) {
 }
 
 router.get('/', requireAuth, getEvents)
-router.post('/', requireAuth, requireAdmin, createEvent)
+router.get('/manage', requireAuth, requireOrganizerOrAdmin, (req, res) => getEvents(req, res, true))
+router.get('/pending', requireAuth, requireAdmin, getPendingEvents)
+router.post('/', requireAuth, requireOrganizerOrAdmin, createEvent)
 
 router.post('/import-csv', requireAuth, requireAdmin, uploadCsv, importEventsFromCsv)
 router.get('/export-csv', requireAuth, requireAdmin, exportEventsToCsv)
+router.get('/:id/attendees.csv', requireAuth, requireOrganizerOrAdmin, exportEventAttendees)
+router.get('/:id/attendees', requireAuth, requireOrganizerOrAdmin, getEventAttendees)
+router.get('/:id/sales', requireAuth, requireOrganizerOrAdmin, getEventSales)
+router.patch('/:id/moderation', requireAuth, requireAdmin, setEventModeration)
+router.get('/:id/seats', requireAuth, getSeatAvailability)
 
 router.get('/:id', requireAuth, getEventById)
-router.put('/:id', requireAuth, requireAdmin, updateEvent)
-router.delete('/:id', requireAuth, requireAdmin, deleteEvent)
+router.put('/:id', requireAuth, requireOrganizerOrAdmin, updateEvent)
+router.delete('/:id', requireAuth, requireOrganizerOrAdmin, deleteEvent)
 
 module.exports = router

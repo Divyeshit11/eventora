@@ -1,6 +1,7 @@
 const { parse: parseCsv } = require('csv-parse')
 const mongoose = require('mongoose')
 const Event = require('../models/Event')
+const Booking = require('../models/Booking')
 
 const EVENT_FIELDS = [
     'title',
@@ -11,7 +12,15 @@ const EVENT_FIELDS = [
     'ticketCapacity',
     'image',
     'description',
+    'sessions',
+    'seatingEnabled',
+    'seatRows',
+    'seatsPerRow',
+    'venueAddress',
+    'venueContact',
+    'ticketTypes',
 ]
+const CSV_EVENT_FIELDS = EVENT_FIELDS.filter((field) => field !== 'ticketTypes')
 const CATEGORIES = ['Technology', 'Music', 'Business', 'Comedy', 'Other']
 const REQUIRED_CSV_HEADERS = ['title', 'category', 'location', 'date', 'price']
 const INSERT_CHUNK_SIZE = 500
@@ -43,7 +52,51 @@ function sendBadRequest(res, message) {
     return res.status(400).json({ success: false, message })
 }
 
-async function getEvents(req, res) {
+function normalizeTicketTypes(payload, currentEvent) {
+    const rawTypes = payload.ticketTypes === undefined
+        ? [{
+            name: 'General admission',
+            price: payload.price ?? currentEvent?.price,
+            quantity: payload.ticketCapacity ?? currentEvent?.ticketCapacity ?? 100,
+        }]
+        : payload.ticketTypes
+    if (!Array.isArray(rawTypes) || rawTypes.length < 1 || rawTypes.length > 10) return null
+
+    const existingTypes = currentEvent?.ticketTypes || []
+    const names = new Set()
+    const ticketTypes = []
+    for (const rawType of rawTypes) {
+        const name = typeof rawType?.name === 'string' ? rawType.name.trim() : ''
+        const price = Number(rawType?.price)
+        const quantity = Number(rawType?.quantity)
+        const key = name.toLowerCase()
+        if (!name || name.length > 80 || names.has(key) || !Number.isFinite(price) || price < 0 ||
+            !Number.isInteger(quantity) || quantity < 1 || quantity > 100000) return null
+        names.add(key)
+        const existing = existingTypes.find((type) => String(type._id) === String(rawType._id))
+        ticketTypes.push({
+            ...(existing ? { _id: existing._id } : {}),
+            name,
+            price,
+            quantity,
+            sold: existing?.sold ?? (existingTypes.length ? 0 : currentEvent?.ticketsSold ?? 0),
+        })
+    }
+    if (existingTypes.some((type) =>
+        type.sold > 0 && !ticketTypes.some((nextType) => String(nextType._id) === String(type._id))
+    )) return null
+    return ticketTypes
+}
+
+function ticketInventorySummary(ticketTypes) {
+    return {
+        price: Math.min(...ticketTypes.map((type) => type.price)),
+        ticketCapacity: ticketTypes.reduce((total, type) => total + type.quantity, 0),
+        ticketsSold: ticketTypes.reduce((total, type) => total + type.sold, 0),
+    }
+}
+
+async function getEvents(req, res, managementRoute = false) {
     try {
         const pageValue = Number.parseInt(req.query.page, 10)
         const limitValue = Number.parseInt(req.query.limit, 10)
@@ -52,9 +105,26 @@ async function getEvents(req, res) {
             ? Math.min(100, Math.max(1, limitValue))
             : 12
         const filter = {}
+        const conditions = []
+        const management = managementRoute === true || req.query.management === 'true'
+        if (management) {
+            if (!['admin', 'organizer'].includes(req.auth.role)) {
+                return res.status(403).json({ success: false, message: 'Organizer access is required' })
+            }
+            if (req.auth.role === 'organizer') filter.organizer = req.auth.sub
+        } else {
+            conditions.push({ $or: [{ status: 'published' }, { status: { $exists: false } }] })
+        }
         const search = typeof req.query.search === 'string'
             ? req.query.search.trim()
             : ''
+
+        if (management && req.query.status) {
+            if (!['pending_approval', 'published', 'rejected', 'suspended'].includes(req.query.status)) {
+                return sendBadRequest(res, 'status is not supported')
+            }
+            filter.status = req.query.status
+        }
 
         if (search.length > 200) {
             return sendBadRequest(res, 'search must be 200 characters or fewer')
@@ -63,11 +133,11 @@ async function getEvents(req, res) {
         if (search) {
             const escapedSearch = search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
             const searchRegex = new RegExp(escapedSearch, 'i')
-            filter.$or = [
+            conditions.push({ $or: [
                 { title: searchRegex },
                 { location: searchRegex },
                 { description: searchRegex },
-            ]
+            ] })
         }
 
         if (typeof req.query.category === 'string' && req.query.category !== 'all') {
@@ -84,6 +154,8 @@ async function getEvents(req, res) {
             }
             filter.price = { $lte: maxPrice }
         }
+
+        if (conditions.length) filter.$and = conditions
 
         const sortOptions = {
             default: { createdAt: -1 },
@@ -119,6 +191,19 @@ async function getEvents(req, res) {
     }
 }
 
+async function getPendingEvents(req, res) {
+    try {
+        const events = await Event.find({ status: 'pending_approval' })
+            .populate('organizer', 'email')
+            .sort({ createdAt: 1 })
+            .lean()
+        return res.json({ success: true, data: events })
+    } catch (error) {
+        console.error('Failed to load pending events:', error.message)
+        return res.status(500).json({ success: false, message: 'Unable to load pending events' })
+    }
+}
+
 async function getEventById(req, res) {
     try {
         if (!mongoose.isValidObjectId(req.params.id)) {
@@ -132,6 +217,11 @@ async function getEventById(req, res) {
                 message: 'Event not found',
             })
         }
+        if (event.status && event.status !== 'published' &&
+            !(req.auth.role === 'organizer' && String(event.organizer) === req.auth.sub) &&
+            req.auth.role !== 'admin') {
+            return res.status(404).json({ success: false, message: 'Event not found' })
+        }
 
         return res.status(200).json({ success: true, data: event })
     } catch (error) {
@@ -143,16 +233,45 @@ async function getEventById(req, res) {
     }
 }
 
+async function getSeatAvailability(req, res) {
+    if (!mongoose.isValidObjectId(req.params.id)) return sendBadRequest(res, 'Invalid event ID')
+    try {
+        const event = await Event.findById(req.params.id).select('seatingEnabled seatRows seatsPerRow date sessions status organizer')
+        if (!event) return res.status(404).json({ success: false, message: 'Event not found' })
+        if (event.status && event.status !== 'published' &&
+            !(req.auth.role === 'organizer' && String(event.organizer) === req.auth.sub) &&
+            req.auth.role !== 'admin') return res.status(404).json({ success: false, message: 'Event not found' })
+        if (!event.seatingEnabled) return res.json({ success: true, data: { enabled: false, reservedSeats: [] } })
+        const sessionDate = typeof req.query.date === 'string' ? req.query.date : event.date
+        const reserved = await require('../models/Booking').find({
+            event: event._id,
+            sessionDate,
+            status: { $in: ['paid', 'pending'] },
+            $or: [{ status: 'paid' }, { reservationExpiresAt: { $gt: new Date() } }],
+        }).select('selectedSeats').lean()
+        return res.json({ success: true, data: { enabled: true, rows: event.seatRows, seatsPerRow: event.seatsPerRow, reservedSeats: [...new Set(reserved.flatMap((booking) => booking.selectedSeats || []))] } })
+    } catch (error) {
+        console.error('Failed to load seat availability:', error.message)
+        return res.status(500).json({ success: false, message: 'Unable to load seat availability' })
+    }
+}
+
 async function createEvent(req, res) {
     try {
         const payload = getEventPayload(req.body)
         if (!payload) return sendBadRequest(res, 'Event data must be a JSON object')
+        if (typeof payload.venueAddress !== 'string' || !payload.venueAddress.trim()) {
+            return sendBadRequest(res, 'Venue address is required')
+        }
 
+        const ticketTypes = normalizeTicketTypes(payload)
+        if (!ticketTypes) return sendBadRequest(res, 'Add 1–10 ticket types with unique names, valid prices, and quantities from 1 to 100000')
+        const inventory = ticketInventorySummary(ticketTypes)
         const duplicate = await Event.findOne({
             title: exactCaseInsensitive(payload.title),
             location: exactCaseInsensitive(payload.location),
             date: payload.date,
-            price: Number(payload.price),
+            price: inventory.price,
         })
         if (duplicate) {
             return res.status(409).json({
@@ -161,7 +280,13 @@ async function createEvent(req, res) {
             })
         }
 
-        const event = await Event.create({ ...payload, organizer: req.auth.sub })
+        const event = await Event.create({
+            ...payload,
+            ...inventory,
+            ticketTypes,
+            organizer: req.auth.sub,
+            status: req.auth.role === 'admin' ? 'published' : 'pending_approval',
+        })
         return res.status(201).json({
             success: true,
             message: 'Event created successfully',
@@ -197,22 +322,54 @@ async function updateEvent(req, res) {
             return sendBadRequest(res, 'Provide at least one event field to update')
         }
 
-        if (payload.ticketCapacity !== undefined) {
-            const currentEvent = await Event.findById(req.params.id).select('ticketsSold')
-            if (!currentEvent) {
-                return res.status(404).json({ success: false, message: 'Event not found' })
+        const currentEvent = await Event.findById(req.params.id)
+        if (!currentEvent) return res.status(404).json({ success: false, message: 'Event not found' })
+        if (req.auth.role === 'organizer' && String(currentEvent.organizer) !== req.auth.sub) {
+            return res.status(403).json({ success: false, message: 'You can only manage your own events' })
+        }
+        let inventoryChanged = false
+        if (payload.ticketTypes !== undefined || payload.price !== undefined || payload.ticketCapacity !== undefined) {
+            const ticketTypes = normalizeTicketTypes(payload, currentEvent)
+            if (!ticketTypes) return sendBadRequest(res, 'Add 1–10 ticket types with unique names, valid prices, and quantities from 1 to 100000')
+            if (ticketTypes.some((type) => type.quantity < type.sold)) {
+                return sendBadRequest(res, 'Ticket type quantity cannot be lower than tickets already reserved or sold')
             }
-            if (Number(payload.ticketCapacity) < currentEvent.ticketsSold) {
-                return sendBadRequest(res, 'Ticket capacity cannot be lower than tickets already sold')
-            }
+            payload.ticketTypes = ticketTypes
+            Object.assign(payload, ticketInventorySummary(ticketTypes))
+            inventoryChanged = true
+        }
+        if (payload.ticketCapacity !== undefined && Number(payload.ticketCapacity) < currentEvent.ticketsSold) {
+            return sendBadRequest(res, 'Ticket capacity cannot be lower than tickets already reserved or sold')
+        }
+        if (req.auth.role === 'organizer') {
+            payload.status = 'pending_approval'
+            payload.moderationNote = ''
         }
 
-        const event = await Event.findByIdAndUpdate(
-            req.params.id,
-            { $set: payload },
-            { returnDocument: 'after', runValidators: true, context: 'query' }
-        )
+        const updateFilter = { _id: req.params.id }
+        if (inventoryChanged) {
+            updateFilter.$and = [
+                currentEvent.ticketsSold === undefined
+                    ? { $or: [{ ticketsSold: { $exists: false } }, { ticketsSold: 0 }] }
+                    : { ticketsSold: currentEvent.ticketsSold },
+                ...(currentEvent.ticketTypes || []).map((type) => ({
+                    ticketTypes: { $elemMatch: { _id: type._id, sold: type.sold } },
+                })),
+            ]
+        }
+        const event = inventoryChanged
+            ? await Event.findOneAndUpdate(
+                updateFilter,
+                { $set: payload },
+                { returnDocument: 'after', runValidators: true, context: 'query' }
+            )
+            : await Event.findByIdAndUpdate(
+                req.params.id,
+                { $set: payload },
+                { returnDocument: 'after', runValidators: true, context: 'query' }
+            )
         if (!event) {
+            if (inventoryChanged) return res.status(409).json({ success: false, message: 'Ticket sales changed while you were editing. Refresh the event and try again.' })
             return res.status(404).json({
                 success: false,
                 message: 'Event not found',
@@ -242,11 +399,24 @@ async function deleteEvent(req, res) {
             return sendBadRequest(res, 'Invalid event ID')
         }
 
-        const event = await Event.findByIdAndDelete(req.params.id)
+        const currentEvent = await Event.findById(req.params.id)
+        if (!currentEvent) return res.status(404).json({ success: false, message: 'Event not found' })
+        if (req.auth.role === 'organizer' && String(currentEvent.organizer) !== req.auth.sub) {
+            return res.status(403).json({ success: false, message: 'You can only manage your own events' })
+        }
+        if (currentEvent.ticketsSold > 0) {
+            return res.status(409).json({ success: false, message: 'Events with ticket reservations cannot be deleted; contact an administrator to moderate the event' })
+        }
+        const event = await Event.findOneAndDelete({
+            _id: req.params.id,
+            $or: [{ ticketsSold: 0 }, { ticketsSold: { $exists: false } }],
+        })
         if (!event) {
-            return res.status(404).json({
+            return res.status(currentEvent.ticketsSold > 0 ? 409 : 404).json({
                 success: false,
-                message: 'Event not found',
+                message: currentEvent.ticketsSold > 0
+                    ? 'Events with ticket reservations cannot be deleted; contact an administrator to moderate the event'
+                    : 'Event changed while you were deleting it; refresh and try again',
             })
         }
 
@@ -263,6 +433,118 @@ async function deleteEvent(req, res) {
     }
 }
 
+async function setEventModeration(req, res) {
+    if (!mongoose.isValidObjectId(req.params.id)) return sendBadRequest(res, 'Invalid event ID')
+    const { status, note = '' } = req.body || {}
+    if (!['published', 'rejected', 'suspended'].includes(status) ||
+        typeof note !== 'string' ||
+        note.length > 1000 ||
+        (status === 'rejected' && !note.trim())) {
+        return sendBadRequest(res, 'Choose a valid moderation status and a note no longer than 1000 characters')
+    }
+    try {
+        const event = await Event.findByIdAndUpdate(
+            req.params.id,
+            { $set: { status, moderationNote: note.trim() } },
+            { new: true, runValidators: true }
+        )
+        if (!event) return res.status(404).json({ success: false, message: 'Event not found' })
+        return res.json({ success: true, data: event })
+    } catch (error) {
+        console.error('Failed to moderate event:', error.message)
+        return res.status(500).json({ success: false, message: 'Unable to moderate event' })
+    }
+}
+
+async function getEventSales(req, res) {
+    if (!mongoose.isValidObjectId(req.params.id)) return sendBadRequest(res, 'Invalid event ID')
+    try {
+        const event = await Event.findById(req.params.id).select('organizer title ticketTypes price ticketCapacity ticketsSold')
+        if (!event) return res.status(404).json({ success: false, message: 'Event not found' })
+        if (req.auth.role === 'organizer' && String(event.organizer) !== req.auth.sub) {
+            return res.status(403).json({ success: false, message: 'You can only view sales for your own events' })
+        }
+        const [summary = {}] = await Booking.aggregate([
+            { $match: { event: event._id } },
+            { $group: {
+                _id: null,
+                totalBookings: { $sum: 1 },
+                paidBookings: { $sum: { $cond: [{ $eq: ['$status', 'paid'] }, 1, 0] } },
+                paidTickets: { $sum: { $cond: [{ $eq: ['$status', 'paid'] }, '$quantity', 0] } },
+                revenue: { $sum: { $cond: [{ $eq: ['$status', 'paid'] }, '$totalPrice', 0] } },
+                checkedIn: { $sum: { $cond: [{ $ne: ['$checkedInAt', null] }, 1, 0] } },
+            } },
+        ])
+        return res.json({
+            success: true,
+            data: {
+                event: { id: String(event._id), title: event.title },
+                summary: { ...summary, ticketCapacity: event.ticketCapacity, ticketsReserved: event.ticketsSold },
+                ticketTypes: event.ticketTypes || [],
+            },
+        })
+    } catch (error) {
+        console.error('Failed to load event sales:', error.message)
+        return res.status(500).json({ success: false, message: 'Unable to load event sales' })
+    }
+}
+
+async function getEventAttendees(req, res) {
+    if (!mongoose.isValidObjectId(req.params.id)) return sendBadRequest(res, 'Invalid event ID')
+    try {
+        const event = await Event.findById(req.params.id).select('organizer')
+        if (!event) return res.status(404).json({ success: false, message: 'Event not found' })
+        if (req.auth.role === 'organizer' && String(event.organizer) !== req.auth.sub) {
+            return res.status(403).json({ success: false, message: 'You can only manage attendees for your own events' })
+        }
+        const attendees = await Booking.find({ event: event._id, status: { $in: ['paid', 'pending'] } })
+            .populate('user', 'email')
+            .sort({ createdAt: -1 })
+            .lean()
+        return res.json({ success: true, data: attendees })
+    } catch (error) {
+        console.error('Failed to load event attendees:', error.message)
+        return res.status(500).json({ success: false, message: 'Unable to load event attendees' })
+    }
+}
+
+function safeReportCell(value) {
+    const text = String(value ?? '')
+    const safeText = /^[\s]*[=+\-@]/.test(text) ? `'${text}` : text
+    return /[",\r\n]/.test(safeText) ? `"${safeText.replace(/"/g, '""')}"` : safeText
+}
+
+async function exportEventAttendees(req, res) {
+    if (!mongoose.isValidObjectId(req.params.id)) return sendBadRequest(res, 'Invalid event ID')
+    try {
+        const event = await Event.findById(req.params.id).select('organizer title')
+        if (!event) return res.status(404).json({ success: false, message: 'Event not found' })
+        if (req.auth.role === 'organizer' && String(event.organizer) !== req.auth.sub) {
+            return res.status(403).json({ success: false, message: 'You can only export attendees for your own events' })
+        }
+        const attendees = await Booking.find({ event: event._id }).populate('user', 'email').sort({ createdAt: -1 }).lean()
+        const rows = [
+            ['Event', 'Attendee email', 'Ticket code', 'Ticket type', 'Quantity', 'Amount', 'Status', 'Checked in at'],
+            ...attendees.map((booking) => [
+                event.title,
+                booking.user?.email,
+                booking.ticketCode,
+                booking.ticketTypeName,
+                booking.quantity,
+                booking.totalPrice,
+                booking.status,
+                booking.checkedInAt?.toISOString(),
+            ]),
+        ]
+        res.setHeader('Content-Type', 'text/csv; charset=utf-8')
+        res.setHeader('Content-Disposition', `attachment; filename="eventora-attendees-${event._id}.csv"`)
+        return res.send(rows.map((row) => row.map(safeReportCell).join(',')).join('\r\n'))
+    } catch (error) {
+        console.error('Failed to export event attendees:', error.message)
+        return res.status(500).json({ success: false, message: 'Unable to export event attendees' })
+    }
+}
+
 function quoteCsvCell(value) {
     const text = String(value ?? '')
     return /[",\r\n]/.test(text)
@@ -274,8 +556,10 @@ async function exportEventsToCsv(req, res) {
     try {
         const events = await Event.find().sort({ createdAt: -1 }).lean()
         const rows = [
-            EVENT_FIELDS,
-            ...events.map((event) => EVENT_FIELDS.map((field) => event[field])),
+            CSV_EVENT_FIELDS,
+            ...events.map((event) => CSV_EVENT_FIELDS.map((field) =>
+                Array.isArray(event[field]) ? JSON.stringify(event[field]) : event[field]
+            )),
         ]
         const csv = rows
             .map((row) => row.map(quoteCsvCell).join(','))
@@ -303,6 +587,8 @@ function mapCsvRow(row) {
         title: String(row.title ?? '').trim(),
         category: matchedCategory || category,
         location: String(row.location ?? '').trim(),
+        venueAddress: String(row.venueaddress ?? '').trim(),
+        venueContact: String(row.venuecontact ?? '').trim(),
         date: String(row.date ?? '').trim(),
         price: String(row.price ?? '').trim() === '' ? Number.NaN : Number(row.price),
         image: String(row.image ?? '').trim(),
@@ -513,7 +799,7 @@ async function importEventsFromCsv(req, res) {
                 for (let index = 0; index < events.length; index += INSERT_CHUNK_SIZE) {
                     const chunk = events.slice(index, index + INSERT_CHUNK_SIZE)
                     const inserted = await Event.insertMany(
-                        chunk.map((entry) => entry.event)
+                        chunk.map((entry) => ({ ...entry.event, organizer: req.auth.sub, status: 'published' }))
                     )
                     importedCount += inserted.length
                     successfulRows.push(...chunk.map((entry) => ({
@@ -584,10 +870,16 @@ async function importEventsFromCsv(req, res) {
 
 module.exports = {
     getEvents,
+    getPendingEvents,
     getEventById,
+    getSeatAvailability,
     createEvent,
     updateEvent,
     deleteEvent,
+    setEventModeration,
+    getEventSales,
+    getEventAttendees,
+    exportEventAttendees,
     exportEventsToCsv,
     importEventsFromCsv,
 }

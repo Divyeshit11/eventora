@@ -23,11 +23,16 @@ const emptyForm = {
     title: '',
     category: 'Technology',
     location: '',
+    venueAddress: '',
+    venueContact: '',
     date: '',
-    price: '',
-    ticketCapacity: '100',
+    ticketTypes: [{ name: 'General admission', price: '', quantity: '100' }],
     image: '',
     description: '',
+    additionalDates: '',
+    seatingEnabled: false,
+    seatRows: '0',
+    seatsPerRow: '0',
 }
 
 function EventManagerPage() {
@@ -60,7 +65,7 @@ function EventManagerPage() {
 
     useEffect(() => {
         const controller = new AbortController()
-        dispatch(fetchEvents({ page: managerPage, limit: 20 }, { signal: controller.signal }))
+        dispatch(fetchEvents({ page: managerPage, limit: 20, management: true }, { signal: controller.signal }))
         return () => controller.abort()
     }, [dispatch, managerPage])
 
@@ -83,11 +88,18 @@ function EventManagerPage() {
             title: event.title || '',
             category: event.category || 'Other',
             location: event.location || '',
+            venueAddress: event.venueAddress || '',
+            venueContact: event.venueContact || '',
             date: event.date?.slice(0, 10) || '',
-            price: String(event.price ?? ''),
-            ticketCapacity: String(event.ticketCapacity ?? 100),
+            ticketTypes: event.ticketTypes?.length
+                ? event.ticketTypes.map(({ name, price, quantity, _id }) => ({ name, price: String(price), quantity: String(quantity), _id }))
+                : [{ name: 'General admission', price: String(event.price ?? ''), quantity: String(event.ticketCapacity ?? 100) }],
             image: event.image || '',
             description: event.description || '',
+            additionalDates: (event.sessions || []).map((session) => session.date).filter((date) => date !== event.date).join(', '),
+            seatingEnabled: Boolean(event.seatingEnabled),
+            seatRows: String(event.seatRows || 0),
+            seatsPerRow: String(event.seatsPerRow || 0),
         })
         document.getElementById('event-form')?.scrollIntoView({
             behavior: 'smooth',
@@ -99,11 +111,22 @@ function EventManagerPage() {
         event.preventDefault()
         setSaveSuccess('')
         const isEditing = Boolean(editingId)
+        const ticketTypes = formData.ticketTypes.map((ticketType) => ({
+            ...ticketType,
+            price: Number(ticketType.price),
+            quantity: Number(ticketType.quantity),
+        }))
         const payload = {
             ...formData,
-            price: Number(formData.price),
-            ticketCapacity: Number(formData.ticketCapacity),
+            ticketTypes,
+            price: Math.min(...ticketTypes.map((ticketType) => ticketType.price)),
+            ticketCapacity: ticketTypes.reduce((total, ticketType) => total + ticketType.quantity, 0),
+            seatRows: Number(formData.seatRows || 0),
+            seatsPerRow: Number(formData.seatsPerRow || 0),
+            sessions: [formData.date, ...formData.additionalDates.split(',').map((date) => date.trim()).filter(Boolean)].map((date) => ({ date, label: date })),
         }
+
+        delete payload.additionalDates
         const result = isEditing
             ? await dispatch(updateEventThunk({ id: editingId, eventData: payload }))
             : await dispatch(createEventThunk(payload))
@@ -112,11 +135,35 @@ function EventManagerPage() {
             (isEditing && updateEventThunk.fulfilled.match(result)) ||
             (!isEditing && createEventThunk.fulfilled.match(result))
         ) {
-            setSaveSuccess(
-                isEditing ? 'Event updated successfully.' : 'Event created successfully.'
-            )
+        const requiresApproval = currentUser?.role === 'organizer'
+        setSaveSuccess(isEditing
+            ? requiresApproval ? 'Changes submitted for administrator approval.' : 'Event updated successfully.'
+            : requiresApproval ? 'Event submitted for administrator approval.' : 'Event created and published.')
             resetForm()
         }
+    }
+
+    function updateTicketType(index, field, value) {
+        setFormData((form) => ({
+            ...form,
+            ticketTypes: form.ticketTypes.map((ticketType, typeIndex) =>
+                typeIndex === index ? { ...ticketType, [field]: value } : ticketType
+            ),
+        }))
+    }
+
+    function addTicketType() {
+        setFormData((form) => form.ticketTypes.length >= 10 ? form : ({
+            ...form,
+            ticketTypes: [...form.ticketTypes, { name: '', price: '', quantity: '100' }],
+        }))
+    }
+
+    function removeTicketType(index) {
+        setFormData((form) => form.ticketTypes.length <= 1 ? form : ({
+            ...form,
+            ticketTypes: form.ticketTypes.filter((_, typeIndex) => typeIndex !== index),
+        }))
     }
 
     async function handleRemoveEvent(eventId) {
@@ -191,7 +238,7 @@ function EventManagerPage() {
                 </div>
                 <details className="mt-5 rounded-xl border border-surface-border bg-surface-card p-4">
                     <summary className="cursor-pointer font-semibold">
-                        Change administrator password
+                        Change account password
                     </summary>
                     <form onSubmit={handlePasswordChange} className="mt-4 grid gap-4 sm:max-w-lg">
                         <label className="grid gap-2 text-sm text-slate-300">
@@ -239,7 +286,7 @@ function EventManagerPage() {
                 </details>
                 <p className="mt-3 text-slate-400">Total events: {eventCount}</p>
                 <p className="mt-3 text-slate-400">
-                    Create and manage events using MongoDB.
+                    Create an event, set its venue and ticket types, then submit it for administrator approval.
                 </p>
 
                 <form
@@ -272,7 +319,7 @@ function EventManagerPage() {
                         </select>
                     </label>
                     <label className="grid gap-2 text-sm text-slate-300">
-                        Location
+                        Venue name / location
                         <input
                             name="location"
                             value={formData.location}
@@ -280,6 +327,27 @@ function EventManagerPage() {
                             maxLength="160"
                             className="rounded-lg border border-surface-border bg-surface px-3 py-3 text-white"
                             required
+                        />
+                    </label>
+                    <label className="grid gap-2 text-sm text-slate-300">
+                        Venue address
+                        <input
+                            name="venueAddress"
+                            value={formData.venueAddress}
+                            onChange={handleChange}
+                            maxLength="500"
+                            className="rounded-lg border border-surface-border bg-surface px-3 py-3 text-white"
+                            required
+                        />
+                    </label>
+                    <label className="grid gap-2 text-sm text-slate-300">
+                        Venue contact
+                        <input
+                            name="venueContact"
+                            value={formData.venueContact}
+                            onChange={handleChange}
+                            maxLength="160"
+                            className="rounded-lg border border-surface-border bg-surface px-3 py-3 text-white"
                         />
                     </label>
                     <label className="grid gap-2 text-sm text-slate-300">
@@ -294,32 +362,35 @@ function EventManagerPage() {
                         />
                     </label>
                     <label className="grid gap-2 text-sm text-slate-300">
-                        Ticket Price (₹)
-                        <input
-                            type="number"
-                            name="price"
-                            min="0"
-                            step="0.01"
-                            value={formData.price}
-                            onChange={handleChange}
-                            className="rounded-lg border border-surface-border bg-surface px-3 py-3 text-white"
-                            required
-                        />
+                        Additional dates (comma separated)
+                        <input name="additionalDates" value={formData.additionalDates} onChange={handleChange} placeholder="2027-04-12, 2027-04-13" className="rounded-lg border border-surface-border bg-surface px-3 py-3 text-white" />
                     </label>
-                    <label className="grid gap-2 text-sm text-slate-300">
-                        Ticket Capacity
-                        <input
-                            type="number"
-                            name="ticketCapacity"
-                            min="1"
-                            max="100000"
-                            step="1"
-                            value={formData.ticketCapacity}
-                            onChange={handleChange}
-                            className="rounded-lg border border-surface-border bg-surface px-3 py-3 text-white"
-                            required
-                        />
+                    <fieldset className="grid gap-3 sm:col-span-2">
+                        <legend className="text-sm font-semibold text-slate-200">Ticket types and inventory</legend>
+                        {formData.ticketTypes.map((ticketType, index) => (
+                            <div key={ticketType._id || index} className="grid gap-3 rounded-xl border border-surface-border p-4 sm:grid-cols-[1fr_1fr_1fr_auto]">
+                                <label className="grid gap-2 text-sm text-slate-300">
+                                    Type name
+                                    <input value={ticketType.name} onChange={(event) => updateTicketType(index, 'name', event.target.value)} maxLength="80" placeholder="General admission or VIP" className="rounded-lg border border-surface-border bg-surface px-3 py-3 text-white" required />
+                                </label>
+                                <label className="grid gap-2 text-sm text-slate-300">
+                                    Price (₹)
+                                    <input type="number" min="0" step="0.01" value={ticketType.price} onChange={(event) => updateTicketType(index, 'price', event.target.value)} className="rounded-lg border border-surface-border bg-surface px-3 py-3 text-white" required />
+                                </label>
+                                <label className="grid gap-2 text-sm text-slate-300">
+                                    Quantity
+                                    <input type="number" min="1" max="100000" step="1" value={ticketType.quantity} onChange={(event) => updateTicketType(index, 'quantity', event.target.value)} className="rounded-lg border border-surface-border bg-surface px-3 py-3 text-white" required />
+                                </label>
+                                <Button type="button" variant="secondary" disabled={formData.ticketTypes.length <= 1} onClick={() => removeTicketType(index)}>Remove</Button>
+                            </div>
+                        ))}
+                        <Button type="button" variant="secondary" disabled={formData.ticketTypes.length >= 10} onClick={addTicketType}>Add ticket type</Button>
+                    </fieldset>
+                    <label className="flex items-center gap-3 text-sm text-slate-300 sm:col-span-2">
+                        <input type="checkbox" name="seatingEnabled" checked={formData.seatingEnabled} onChange={(event) => setFormData((form) => ({ ...form, seatingEnabled: event.target.checked }))} />
+                        Use assigned seating for this event
                     </label>
+                    {formData.seatingEnabled && <><label className="grid gap-2 text-sm text-slate-300">Seat rows<input type="number" name="seatRows" min="1" max="26" value={formData.seatRows} onChange={handleChange} className="rounded-lg border border-surface-border bg-surface px-3 py-3 text-white" required /></label><label className="grid gap-2 text-sm text-slate-300">Seats per row<input type="number" name="seatsPerRow" min="1" max="50" value={formData.seatsPerRow} onChange={handleChange} className="rounded-lg border border-surface-border bg-surface px-3 py-3 text-white" required /></label></>}
                     <label className="grid gap-2 text-sm text-slate-300">
                         Event Image URL
                         <input
@@ -408,12 +479,16 @@ function EventManagerPage() {
                                 >
                                     <div>
                                         <h3 className="font-semibold">{event.title}</h3>
+                                        <p className="mt-1 text-xs font-semibold uppercase tracking-wide text-amber-300">
+                                            {(event.status || 'published').replaceAll('_', ' ')}
+                                        </p>
                                         <p className="mt-1 text-sm text-slate-400">
                                             {event.location} · ₹{event.price}
                                         </p>
                                         <p className="mt-1 text-xs text-slate-500">
                                             {event.category} · {event.date}
                                         </p>
+                                        {event.moderationNote && <p className="mt-2 max-w-xl text-sm text-amber-300">Review note: {event.moderationNote}</p>}
                                     </div>
                                     <div className="flex flex-wrap items-center gap-3">
                                         <Link
@@ -421,6 +496,12 @@ function EventManagerPage() {
                                             className="text-sm font-medium text-brand-500 hover:text-brand-400"
                                         >
                                             View Details
+                                        </Link>
+                                        <Link
+                                            to={`/manage-events/${eventId}`}
+                                            className="text-sm font-medium text-brand-400 hover:text-brand-300"
+                                        >
+                                            Sales & attendees
                                         </Link>
                                         <Button variant="secondary" onClick={() => handleEdit(event)}>
                                             Edit
@@ -465,7 +546,7 @@ function EventManagerPage() {
                     )}
                 </section>
 
-                <CsvImport onEventsRefreshed={() => setManagerPage(1)} />
+                {currentUser?.role === 'admin' && <CsvImport onEventsRefreshed={() => setManagerPage(1)} />}
             </main>
             <Footer />
         </div>

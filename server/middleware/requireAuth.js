@@ -63,4 +63,11 @@ function requireAdmin(req, res, next) {
     return next()
 }
 
-module.exports = { getJwtSecret, requireAuth, requireAdmin }
+function requireOrganizerOrAdmin(req, res, next) {
+    if (!['organizer', 'admin'].includes(req.auth?.role)) {
+        return res.status(403).json({ success: false, message: 'Organizer access is required' })
+    }
+    return next()
+}
+
+module.exports = { getJwtSecret, requireAuth, requireAdmin, requireOrganizerOrAdmin }

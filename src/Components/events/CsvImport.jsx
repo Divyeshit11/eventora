@@ -192,7 +192,7 @@ function CsvImport({ onEventsRefreshed }) {
                 },
             })
 
-            const refreshResult = await dispatch(fetchEvents({ page: 1, limit: 20 }))
+            const refreshResult = await dispatch(fetchEvents({ page: 1, limit: 20, management: true }))
             onEventsRefreshed?.()
 
             setFiles([])
