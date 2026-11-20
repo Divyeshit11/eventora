@@ -1,9 +1,9 @@
 import { useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router'
-import Navbar from '../Components/layout/Navbar'
-import Footer from '../Components/layout/Footer'
+import AuthLayout from '../Components/common/AuthLayout'
 import Button from '../Components/common/Button'
 import PasswordInput from '../Components/common/PasswordInput'
+import { LockIcon } from '../Components/common/icons'
 import { resetPassword } from '../services/eventService'
 
 function ResetPasswordPage() {
@@ -45,55 +45,62 @@ function ResetPasswordPage() {
     }
 
     return (
-        <div className="min-h-screen bg-surface text-white">
-            <Navbar />
-            <main className="mx-auto max-w-md px-4 py-16 sm:px-6">
-                <h1 className="text-3xl font-bold">Choose a new password</h1>
-                <p className="mt-3 text-slate-400">
-                    Use at least 6 characters. Passwords must be no more than 72 UTF-8 bytes.
-                </p>
-                {!token ? (
-                    <div className="mt-8 rounded-2xl border border-surface-border bg-surface-card p-6">
-                        <p role="alert" className="text-red-300">
+        <AuthLayout
+            title="Choose a new password"
+            subtitle="Use at least 6 characters. Passwords must be no more than 72 UTF-8 bytes."
+        >
+            {!token ? (
+                <div className="grid gap-5">
+                    <div className="flex items-start gap-3 rounded-2xl border border-red-800 bg-red-950/30 p-4">
+                        <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-red-500/20 text-red-300">
+                            <LockIcon className="h-5 w-5" />
+                        </span>
+                        <p role="alert" className="text-sm leading-6 text-red-200">
                             This password reset link is invalid or expired.
                         </p>
-                        <Link to="/forgot-password" className="mt-5 inline-block text-brand-400 hover:text-brand-300">
-                            Request a new reset link
-                        </Link>
                     </div>
-                ) : (
-                    <form
-                        onSubmit={handleSubmit}
-                        className="mt-8 grid gap-5 rounded-2xl border border-surface-border bg-surface-card p-6"
+                    <Link
+                        to="/forgot-password"
+                        className="inline-flex items-center justify-center rounded-xl bg-gradient-to-r from-brand-600 to-brand-500 px-6 py-3.5 font-semibold text-white shadow-lg shadow-brand-600/25 transition hover:brightness-110"
                     >
-                        <PasswordInput
-                            label="New password"
-                            autoComplete="new-password"
-                            value={password}
-                            onChange={(event) => setPassword(event.target.value)}
-                            minLength={6}
-                            maxLength={128}
-                        />
-                        <PasswordInput
-                            label="Confirm new password"
-                            autoComplete="new-password"
-                            value={confirmPassword}
-                            onChange={(event) => setConfirmPassword(event.target.value)}
-                            minLength={6}
-                            maxLength={128}
-                        />
-                        {error && <p role="alert" className="text-sm text-red-300">{error}</p>}
-                        <Button type="submit" disabled={status === 'loading'}>
-                            {status === 'loading' ? 'Updating password...' : 'Reset password'}
-                        </Button>
-                        <Link to="/login" className="text-sm text-brand-400 hover:text-brand-300">
-                            Back to sign in
-                        </Link>
-                    </form>
-                )}
-            </main>
-            <Footer />
-        </div>
+                        Request a new reset link
+                    </Link>
+                </div>
+            ) : (
+                <form onSubmit={handleSubmit} className="grid gap-5">
+                    <PasswordInput
+                        label="New password"
+                        autoComplete="new-password"
+                        value={password}
+                        onChange={(event) => setPassword(event.target.value)}
+                        minLength={6}
+                        maxLength={128}
+                    />
+                    <PasswordInput
+                        label="Confirm new password"
+                        autoComplete="new-password"
+                        value={confirmPassword}
+                        onChange={(event) => setConfirmPassword(event.target.value)}
+                        minLength={6}
+                        maxLength={128}
+                    />
+                    {error && (
+                        <p role="alert" className="rounded-xl border border-red-800 bg-red-950/30 px-4 py-3 text-sm text-red-300">
+                            {error}
+                        </p>
+                    )}
+                    <Button type="submit" disabled={status === 'loading'} className="w-full py-3.5">
+                        {status === 'loading' ? 'Updating password...' : 'Reset password'}
+                    </Button>
+                    <Link
+                        to="/login"
+                        className="text-center text-sm font-medium text-brand-400 transition hover:text-brand-300"
+                    >
+                        Back to sign in
+                    </Link>
+                </form>
+            )}
+        </AuthLayout>
     )
 }
 

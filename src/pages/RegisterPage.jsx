@@ -1,10 +1,10 @@
 import { useState } from 'react'
 import { Link, Navigate } from 'react-router'
 import { useDispatch, useSelector } from 'react-redux'
-import Navbar from '../Components/layout/Navbar'
-import Footer from '../Components/layout/Footer'
+import AuthLayout from '../Components/common/AuthLayout'
 import Button from '../Components/common/Button'
 import PasswordInput from '../Components/common/PasswordInput'
+import { MailIcon } from '../Components/common/icons'
 import { registerThunk } from '../features/auth/authSlice'
 
 function getFriendlyPasswordError(message) {
@@ -41,19 +41,15 @@ function RegisterPage() {
     }
 
     return (
-        <div className="min-h-screen bg-surface text-white">
-            <Navbar />
-            <main className="mx-auto max-w-md px-4 py-16 sm:px-6">
-                <h1 className="text-3xl font-bold">Create your account</h1>
-                <p className="mt-3 text-slate-400">
-                    Sign up once and start discovering events right away.
-                </p>
-                <form
-                    onSubmit={handleSubmit}
-                    className="mt-8 grid gap-5 rounded-2xl border border-surface-border bg-surface-card p-6"
-                >
-                    <label className="grid gap-2 text-sm text-slate-300">
-                        Email address
+        <AuthLayout
+            title="Create your account"
+            subtitle="Sign up once and start discovering events right away."
+        >
+            <form onSubmit={handleSubmit} className="grid gap-5">
+                <label className="grid gap-2 text-sm font-medium text-slate-300">
+                    Email address
+                    <span className="relative">
+                        <MailIcon className="pointer-events-none absolute left-4 top-1/2 h-4.5 w-4.5 -translate-y-1/2 text-slate-500" />
                         <input
                             type="email"
                             autoComplete="email"
@@ -61,40 +57,40 @@ function RegisterPage() {
                             onChange={(event) => setEmail(event.target.value)}
                             maxLength="254"
                             required
-                            className="rounded-lg border border-surface-border bg-surface px-3 py-3 text-white"
+                            placeholder="you@example.com"
+                            className="field field-with-icon py-3"
                         />
-                    </label>
-                    <PasswordInput
-                        label="Password (at least 6 characters)"
-                        autoComplete="new-password"
-                        value={password}
-                        onChange={(event) => {
-                            setPassword(event.target.value)
-                            setPasswordError('')
-                        }}
-                        minLength={6}
-                    />
-                    <p className="-mt-3 text-xs text-slate-500">
-                        You’ll be signed in automatically after creating your account.
+                    </span>
+                </label>
+                <PasswordInput
+                    label="Password (at least 6 characters)"
+                    autoComplete="new-password"
+                    value={password}
+                    onChange={(event) => {
+                        setPassword(event.target.value)
+                        setPasswordError('')
+                    }}
+                    minLength={6}
+                />
+                <p className="-mt-3 text-xs text-slate-500">
+                    You’ll be signed in automatically after creating your account.
+                </p>
+                {(passwordError || error) && (
+                    <p role="alert" className="rounded-xl border border-red-800 bg-red-950/30 px-4 py-3 text-sm text-red-300">
+                        {passwordError || getFriendlyPasswordError(error)}
                     </p>
-                    {(passwordError || error) && (
-                        <p role="alert" className="text-sm text-red-300">
-                            {passwordError || getFriendlyPasswordError(error)}
-                        </p>
-                    )}
-                    <Button type="submit" disabled={status === 'loading'}>
-                        {status === 'loading' ? 'Creating account...' : 'Create account'}
-                    </Button>
-                    <p className="text-sm text-slate-400">
-                        Already have an account?{' '}
-                        <Link to="/login" className="text-brand-400 hover:text-brand-300">
-                            Sign in
-                        </Link>
-                    </p>
-                </form>
-            </main>
-            <Footer />
-        </div>
+                )}
+                <Button type="submit" disabled={status === 'loading'} className="w-full py-3.5">
+                    {status === 'loading' ? 'Creating account...' : 'Create account'}
+                </Button>
+                <p className="text-center text-sm text-slate-400">
+                    Already have an account?{' '}
+                    <Link to="/login" className="font-semibold text-brand-400 transition hover:text-brand-300">
+                        Sign in
+                    </Link>
+                </p>
+            </form>
+        </AuthLayout>
     )
 }
 

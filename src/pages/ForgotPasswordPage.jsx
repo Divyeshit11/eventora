@@ -1,8 +1,8 @@
 import { useState } from 'react'
 import { Link } from 'react-router'
-import Navbar from '../Components/layout/Navbar'
-import Footer from '../Components/layout/Footer'
+import AuthLayout from '../Components/common/AuthLayout'
 import Button from '../Components/common/Button'
+import { MailIcon, CheckIcon } from '../Components/common/icons'
 import { requestPasswordReset } from '../services/eventService'
 
 function ForgotPasswordPage() {
@@ -28,30 +28,34 @@ function ForgotPasswordPage() {
     }
 
     return (
-        <div className="min-h-screen bg-surface text-white">
-            <Navbar />
-            <main className="mx-auto max-w-md px-4 py-16 sm:px-6">
-                <h1 className="text-3xl font-bold">Reset your password</h1>
-                <p className="mt-3 text-slate-400">
-                    Enter your account email and we’ll send you a reset link.
-                </p>
-                {status === 'succeeded' ? (
-                    <div className="mt-8 rounded-2xl border border-surface-border bg-surface-card p-6">
-                        <p role="status" className="text-slate-300">
+        <AuthLayout
+            title="Reset your password"
+            subtitle="Enter your account email and we’ll send you a reset link."
+        >
+            {status === 'succeeded' ? (
+                <div className="grid gap-5">
+                    <div className="flex items-start gap-3 rounded-2xl border border-emerald-800 bg-emerald-950/30 p-4">
+                        <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-emerald-500/20 text-emerald-300">
+                            <CheckIcon className="h-5 w-5" />
+                        </span>
+                        <p role="status" className="text-sm leading-6 text-emerald-200">
                             If an account exists for that email, a password reset link has been sent.
                             Check your inbox and spam folder.
                         </p>
-                        <Link to="/login" className="mt-5 inline-block text-brand-400 hover:text-brand-300">
-                            Back to sign in
-                        </Link>
                     </div>
-                ) : (
-                    <form
-                        onSubmit={handleSubmit}
-                        className="mt-8 grid gap-5 rounded-2xl border border-surface-border bg-surface-card p-6"
+                    <Link
+                        to="/login"
+                        className="inline-flex items-center justify-center rounded-xl bg-gradient-to-r from-brand-600 to-brand-500 px-6 py-3.5 font-semibold text-white shadow-lg shadow-brand-600/25 transition hover:brightness-110"
                     >
-                        <label className="grid gap-2 text-sm text-slate-300">
-                            Email address
+                        Back to sign in
+                    </Link>
+                </div>
+            ) : (
+                <form onSubmit={handleSubmit} className="grid gap-5">
+                    <label className="grid gap-2 text-sm font-medium text-slate-300">
+                        Email address
+                        <span className="relative">
+                            <MailIcon className="pointer-events-none absolute left-4 top-1/2 h-4.5 w-4.5 -translate-y-1/2 text-slate-500" />
                             <input
                                 type="email"
                                 autoComplete="email"
@@ -59,21 +63,28 @@ function ForgotPasswordPage() {
                                 onChange={(event) => setEmail(event.target.value)}
                                 maxLength="254"
                                 required
-                                className="rounded-lg border border-surface-border bg-surface px-3 py-3 text-white"
+                                placeholder="you@example.com"
+                                className="field field-with-icon py-3"
                             />
-                        </label>
-                        {error && <p role="alert" className="text-sm text-red-300">{error}</p>}
-                        <Button type="submit" disabled={status === 'loading'}>
-                            {status === 'loading' ? 'Sending link...' : 'Send reset link'}
-                        </Button>
-                        <Link to="/login" className="text-sm text-brand-400 hover:text-brand-300">
-                            Back to sign in
-                        </Link>
-                    </form>
-                )}
-            </main>
-            <Footer />
-        </div>
+                        </span>
+                    </label>
+                    {error && (
+                        <p role="alert" className="rounded-xl border border-red-800 bg-red-950/30 px-4 py-3 text-sm text-red-300">
+                            {error}
+                        </p>
+                    )}
+                    <Button type="submit" disabled={status === 'loading'} className="w-full py-3.5">
+                        {status === 'loading' ? 'Sending link...' : 'Send reset link'}
+                    </Button>
+                    <Link
+                        to="/login"
+                        className="text-center text-sm font-medium text-brand-400 transition hover:text-brand-300"
+                    >
+                        Back to sign in
+                    </Link>
+                </form>
+            )}
+        </AuthLayout>
     )
 }
 

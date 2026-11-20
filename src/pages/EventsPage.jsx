@@ -3,6 +3,7 @@ import { useDispatch, useSelector } from 'react-redux'
 import Navbar from '../Components/layout/Navbar'
 import FeaturedEvents from '../Components/events/FeaturedEvents'
 import Footer from '../Components/layout/Footer'
+import PageHeader from '../Components/common/PageHeader'
 import { fetchEvents } from '../features/events/eventsSlice'
 
 const PAGE_SIZE = 9
@@ -46,19 +47,12 @@ function EventsPage() {
     return (
         <div className="min-h-screen bg-surface text-white">
             <Navbar />
-            <main className="pt-10">
-                <div className="mx-auto max-w-7xl px-4 sm:px-6">
-                    <p className="text-sm font-semibold uppercase tracking-wider text-brand-500">
-                        Eventora / Explore
-                    </p>
-                    <h1 className="mt-3 text-4xl font-bold text-white sm:text-5xl">
-                        Explore All Events
-                    </h1>
-                    <p className="mt-4 max-w-2xl text-slate-400">
-                        Discover conferences, music nights, business meetups, and more.
-                        Find an event that matches your interests.
-                    </p>
-                </div>
+            <main>
+                <PageHeader
+                    eyebrow="Eventora / Explore"
+                    title={<>Explore <span className="text-gradient">All Events</span></>}
+                    description="Discover conferences, music nights, business meetups, and more. Find an event that matches your interests."
+                />
                 <FeaturedEvents
                     events={events}
                     pagination={pagination}

@@ -1,11 +1,66 @@
 import { Link } from 'react-router'
 import Navbar from '../Components/layout/Navbar'
 import Footer from '../Components/layout/Footer'
+import Reveal from '../Components/common/Reveal'
+import heroImage from '../assets/hero.png'
+import {
+    SparklesIcon,
+    ArrowRightIcon,
+    MusicIcon,
+    CpuIcon,
+    BriefcaseIcon,
+    UsersIcon,
+    ShieldIcon,
+    TicketIcon,
+    CalendarIcon,
+    StarIcon,
+} from '../Components/common/icons'
 
 const categories = [
-    { icon: '🎵', title: 'Live music', description: 'Find your next favorite show.' },
-    { icon: '💡', title: 'Technology', description: 'Meet ideas shaping what’s next.' },
-    { icon: '🤝', title: 'Business', description: 'Connect with people who inspire you.' },
+    {
+        icon: MusicIcon,
+        title: 'Live music',
+        description: 'Find your next favorite show.',
+        accent: 'from-purple-500/25 to-fuchsia-500/10 text-purple-300 ring-purple-400/30',
+    },
+    {
+        icon: CpuIcon,
+        title: 'Technology',
+        description: 'Meet ideas shaping what’s next.',
+        accent: 'from-blue-500/25 to-indigo-500/10 text-blue-300 ring-blue-400/30',
+    },
+    {
+        icon: BriefcaseIcon,
+        title: 'Business',
+        description: 'Connect with people who inspire you.',
+        accent: 'from-amber-500/25 to-orange-500/10 text-amber-300 ring-amber-400/30',
+    },
+]
+
+const steps = [
+    {
+        icon: UsersIcon,
+        number: '01',
+        title: 'Create your account',
+        description: 'Sign up with your email and a password. It only takes a moment.',
+    },
+    {
+        icon: SparklesIcon,
+        number: '02',
+        title: 'Find your kind of event',
+        description: 'Explore experiences by category, search, price, and date.',
+    },
+    {
+        icon: TicketIcon,
+        number: '03',
+        title: 'Save what you love',
+        description: 'Keep your favorite events together and come back when you’re ready.',
+    },
+]
+
+const marqueeItems = [
+    'Live Music', 'Tech Talks', 'Comedy Nights', 'Business Meetups',
+    'Food Festivals', 'Art Exhibitions', 'Sports Events', 'Workshops',
 ]
 
 function HomePage() {
@@ -13,131 +68,226 @@ function HomePage() {
         <div className="min-h-screen bg-surface text-white">
             <Navbar />
             <main>
+                {/* Hero */}
                 <section className="relative isolate overflow-hidden">
+                    <div className="pointer-events-none absolute inset-0 -z-10 bg-grid" />
                     <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_top_right,_rgba(99,102,241,0.22),_transparent_55%)]" />
-                    <div className="mx-auto grid min-h-[620px] max-w-7xl items-center gap-12 px-4 py-20 sm:px-6 lg:grid-cols-[1.05fr_0.95fr] lg:py-28">
+                    <div className="pointer-events-none absolute -left-32 top-40 -z-10 h-96 w-96 animate-float-slow rounded-full bg-accent-500/10 blur-3xl" />
+                    <div className="pointer-events-none absolute -right-24 bottom-0 -z-10 h-80 w-80 animate-float rounded-full bg-brand-600/15 blur-3xl" />
+
+                    <div className="mx-auto grid min-h-[640px] max-w-7xl items-center gap-14 px-4 py-20 sm:px-6 lg:grid-cols-[1.05fr_0.95fr] lg:py-28">
                         <div>
-                            <span className="inline-flex items-center gap-2 rounded-full border border-brand-500/30 bg-brand-500/10 px-4 py-2 text-sm font-medium text-brand-100">
-                                <span className="h-2 w-2 rounded-full bg-brand-500" />
-                                Good plans start here
-                            </span>
-                            <h1 className="mt-7 max-w-2xl text-4xl font-extrabold leading-[1.08] tracking-tight sm:text-6xl lg:text-7xl">
-                                Make room for
-                                <span className="block text-brand-500">something exciting.</span>
-                            </h1>
-                            <p className="mt-6 max-w-xl text-lg leading-8 text-slate-400">
-                                Discover concerts, ideas, and experiences worth sharing.
-                                Find your next event with Eventora.
-                            </p>
-                            <div className="mt-9 flex flex-col gap-3 sm:flex-row">
-                                <Link
-                                    to="/register"
-                                    className="inline-flex items-center justify-center rounded-xl bg-brand-600 px-7 py-3.5 font-semibold text-white transition hover:bg-brand-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500"
-                                >
-                                    Create your free account
-                                </Link>
-                                <Link
-                                    to="/login"
-                                    className="inline-flex items-center justify-center rounded-xl border border-surface-border px-7 py-3.5 font-semibold text-slate-200 transition hover:border-brand-500/60 hover:bg-surface-card"
-                                >
-                                    Sign in
-                                </Link>
-                            </div>
-                            <p className="mt-4 text-sm text-slate-500">
-                                Already a member? Sign in to explore and save events.
-                            </p>
+                            <Reveal>
+                                <span className="inline-flex items-center gap-2 rounded-full border border-brand-500/30 bg-brand-500/10 px-4 py-2 text-sm font-medium text-brand-100">
+                                    <span className="h-2 w-2 animate-pulse-soft rounded-full bg-accent-400" />
+                                    Good plans start here
+                                </span>
+                            </Reveal>
+                            <Reveal delay={100}>
+                                <h1 className="mt-7 max-w-2xl font-display text-4xl font-extrabold leading-[1.08] tracking-tight sm:text-6xl lg:text-7xl">
+                                    Make room for
+                                    <span className="text-gradient block">something exciting.</span>
+                                </h1>
+                            </Reveal>
+                            <Reveal delay={200}>
+                                <p className="mt-6 max-w-xl text-lg leading-8 text-slate-400">
+                                    Discover concerts, ideas, and experiences worth sharing.
+                                    Find your next event with Eventora.
+                                </p>
+                            </Reveal>
+                            <Reveal delay={300}>
+                                <div className="mt-9 flex flex-col gap-3 sm:flex-row">
+                                    <Link
+                                        to="/register"
+                                        className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-brand-600 to-brand-500 px-7 py-3.5 font-semibold text-white shadow-lg shadow-brand-600/30 transition hover:shadow-brand-500/50 hover:brightness-110"
+                                    >
+                                        Create your free account
+                                        <ArrowRightIcon className="h-5 w-5" />
+                                    </Link>
+                                    <Link
+                                        to="/login"
+                                        className="inline-flex items-center justify-center rounded-xl border border-surface-border bg-surface-card/60 px-7 py-3.5 font-semibold text-slate-200 backdrop-blur transition hover:border-brand-500/50 hover:bg-surface-card"
+                                    >
+                                        Sign in
+                                    </Link>
+                                </div>
+                            </Reveal>
+                            <Reveal delay={400}>
+                                <p className="mt-4 text-sm text-slate-500">
+                                    Already a member? Sign in to explore and save events.
+                                </p>
+                            </Reveal>
                         </div>
 
-                        <div className="relative mx-auto w-full max-w-lg">
-                            <div className="absolute -inset-5 rounded-[2rem] bg-brand-600/10 blur-2xl" />
-                            <div className="relative rounded-3xl border border-surface-border bg-surface-card/90 p-5 shadow-2xl shadow-black/30 sm:p-7">
-                                <div className="flex items-start justify-between gap-4">
-                                    <div>
-                                        <p className="text-sm font-semibold uppercase tracking-[0.18em] text-brand-400">
-                                            Your next story
-                                        </p>
-                                        <h2 className="mt-2 text-2xl font-bold">Starts with a plan</h2>
-                                    </div>
-                                    <span className="rounded-2xl bg-brand-500/10 p-3 text-2xl" aria-hidden="true">
-                                        ✦
-                                    </span>
-                                </div>
-                                <div className="mt-7 grid gap-3">
-                                    {categories.map((category, index) => (
-                                        <div
-                                            key={category.title}
-                                            className={`flex items-center gap-4 rounded-2xl border border-surface-border p-4 ${
-                                                index === 1 ? 'bg-brand-500/10' : 'bg-surface'
-                                            }`}
-                                        >
-                                            <span className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-surface-card text-2xl" aria-hidden="true">
-                                                {category.icon}
-                                            </span>
-                                            <div>
-                                                <h3 className="font-semibold">{category.title}</h3>
-                                                <p className="mt-1 text-sm text-slate-400">{category.description}</p>
-                                            </div>
-                                            <span className="ml-auto text-slate-500" aria-hidden="true">→</span>
+                        {/* Hero visual */}
+                        <Reveal delay={250} className="relative mx-auto w-full max-w-lg">
+                            <div className="absolute -inset-5 animate-pulse-soft rounded-[2.5rem] bg-gradient-to-br from-brand-600/20 to-accent-500/15 blur-2xl" />
+                            <div className="gradient-border relative overflow-hidden rounded-[2rem] shadow-2xl shadow-black/40">
+                                <img
+                                    src={heroImage}
+                                    alt="People enjoying a live event together"
+                                    className="h-72 w-full object-cover sm:h-80"
+                                />
+                                <div className="absolute inset-0 bg-gradient-to-t from-surface via-surface/30 to-transparent" />
+
+                                {/* Floating cards */}
+                                <div className="absolute bottom-5 left-5 right-5 flex items-center justify-between gap-3">
+                                    <div className="glass flex items-center gap-3 rounded-2xl px-4 py-3">
+                                        <span className="grid h-10 w-10 place-items-center rounded-xl bg-gradient-to-br from-brand-500 to-accent-500 text-white">
+                                            <CalendarIcon className="h-5 w-5" />
+                                        </span>
+                                        <div>
+                                            <p className="text-xs text-slate-400">Next up</p>
+                                            <p className="text-sm font-semibold">Neon Nights Live</p>
                                         </div>
-                                    ))}
-                                </div>
-                                <div className="mt-5 flex items-center gap-3 border-t border-surface-border pt-5">
-                                    <div className="flex -space-x-2" aria-hidden="true">
-                                        <span className="grid h-8 w-8 place-items-center rounded-full border-2 border-surface-card bg-violet-500 text-xs">E</span>
-                                        <span className="grid h-8 w-8 place-items-center rounded-full border-2 border-surface-card bg-sky-500 text-xs">V</span>
-                                        <span className="grid h-8 w-8 place-items-center rounded-full border-2 border-surface-card bg-pink-500 text-xs">T</span>
                                     </div>
-                                    <p className="text-sm text-slate-400">A little discovery goes a long way.</p>
+                                    <div className="glass hidden items-center gap-2 rounded-2xl px-4 py-3 sm:flex">
+                                        <StarIcon filled className="h-4 w-4 text-amber-400" />
+                                        <span className="text-sm font-semibold">4.9</span>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
+
+                            {/* Floating badge */}
+                            <div className="absolute -right-4 -top-6 animate-float rounded-2xl border border-surface-border bg-surface-card/90 px-4 py-3 shadow-xl shadow-black/30 backdrop-blur sm:-right-8">
+                                <p className="text-xs text-slate-400">This weekend</p>
+                                <p className="font-display text-lg font-extrabold text-gradient">120+ events</p>
+                            </div>
+                        </Reveal>
                     </div>
                 </section>
 
-                <section className="border-y border-surface-border bg-surface-card/40">
-                    <div className="mx-auto grid max-w-7xl gap-10 px-4 py-16 sm:px-6 md:grid-cols-3">
-                        {[
-                            {
-                                number: '01',
-                                title: 'Create your account',
-                                description: 'Sign up with your email and a password. It only takes a moment.',
-                            },
-                            {
-                                number: '02',
-                                title: 'Find your kind of event',
-                                description: 'Explore experiences by category, search, price, and date.',
-                            },
-                            {
-                                number: '03',
-                                title: 'Save what you love',
-                                description: 'Keep your favorite events together and come back when you’re ready.',
-                            },
-                        ].map((step) => (
-                            <article key={step.number}>
-                                <p className="text-sm font-bold tracking-widest text-brand-400">{step.number}</p>
-                                <h2 className="mt-3 text-xl font-bold">{step.title}</h2>
-                                <p className="mt-2 leading-7 text-slate-400">{step.description}</p>
-                            </article>
+                {/* Marquee */}
+                <section className="relative overflow-hidden border-y border-surface-border/70 bg-surface-card/40 py-5">
+                    <div className="flex w-max animate-marquee gap-10">
+                        {[...marqueeItems, ...marqueeItems].map((item, index) => (
+                            <span key={index} className="inline-flex items-center gap-3 text-sm font-semibold uppercase tracking-[0.2em] text-slate-500">
+                                <SparklesIcon className="h-4 w-4 text-brand-400" />
+                                {item}
+                            </span>
                         ))}
                     </div>
                 </section>
 
-                <section className="mx-auto max-w-7xl px-4 py-20 text-center sm:px-6 sm:py-24">
-                    <p className="text-sm font-semibold uppercase tracking-[0.2em] text-brand-400">
-                        Your next experience is waiting
-                    </p>
-                    <h2 className="mx-auto mt-4 max-w-2xl text-3xl font-bold sm:text-4xl">
-                        Go from “we should” to “that was amazing.”
-                    </h2>
-                    <p className="mx-auto mt-4 max-w-xl leading-7 text-slate-400">
-                        Join Eventora to explore events and keep the ones you love close.
-                    </p>
-                    <Link
-                        to="/register"
-                        className="mt-8 inline-flex items-center justify-center rounded-xl bg-brand-600 px-7 py-3.5 font-semibold text-white transition hover:bg-brand-700"
-                    >
-                        Get started
-                    </Link>
+                {/* Categories */}
+                <section className="mx-auto max-w-7xl px-4 py-20 sm:px-6 sm:py-24">
+                    <Reveal className="mb-10 flex flex-wrap items-end justify-between gap-4">
+                        <div>
+                            <span className="inline-flex items-center gap-2 rounded-full border border-brand-500/30 bg-brand-500/10 px-4 py-1.5 text-xs font-semibold uppercase tracking-[0.18em] text-brand-300">
+                                Browse by interest
+                            </span>
+                            <h2 className="mt-4 font-display text-3xl font-extrabold tracking-tight text-white sm:text-4xl">
+                                Something for <span className="text-gradient">everyone</span>
+                            </h2>
+                        </div>
+                        <Link to="/events" className="group inline-flex items-center gap-2 text-sm font-semibold text-brand-400 transition hover:text-brand-300">
+                            View all events
+                            <ArrowRightIcon className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+                        </Link>
+                    </Reveal>
+
+                    <div className="grid gap-5 sm:grid-cols-3">
+                        {categories.map((category, index) => (
+                            <Reveal key={category.title} delay={index * 110}>
+                                <Link
+                                    to="/events"
+                                    className="card-surface card-hover group flex h-full flex-col items-start rounded-3xl p-7"
+                                >
+                                    <span className={`grid h-14 w-14 place-items-center rounded-2xl bg-gradient-to-br ${category.accent} ring-1 transition-transform duration-300 group-hover:scale-110 group-hover:-rotate-6`}>
+                                        <category.icon className="h-7 w-7" />
+                                    </span>
+                                    <h3 className="mt-5 font-display text-xl font-bold text-white group-hover:text-brand-200">
+                                        {category.title}
+                                    </h3>
+                                    <p className="mt-2 flex-1 text-sm leading-6 text-slate-400">
+                                        {category.description}
+                                    </p>
+                                    <span className="mt-4 inline-flex items-center gap-1.5 text-sm font-semibold text-brand-400 transition group-hover:gap-2.5">
+                                        Discover
+                                        <ArrowRightIcon className="h-4 w-4" />
+                                    </span>
+                                </Link>
+                            </Reveal>
+                        ))}
+                    </div>
+                </section>
+
+                {/* How it works */}
+                <section className="border-y border-surface-border/70 bg-surface-card/40">
+                    <div className="mx-auto max-w-7xl px-4 py-20 sm:px-6 sm:py-24">
+                        <Reveal className="mb-12 text-center">
+                            <span className="inline-flex items-center gap-2 rounded-full border border-brand-500/30 bg-brand-500/10 px-4 py-1.5 text-xs font-semibold uppercase tracking-[0.18em] text-brand-300">
+                                How it works
+                            </span>
+                            <h2 className="mt-4 font-display text-3xl font-extrabold tracking-tight text-white sm:text-4xl">
+                                Three steps to your <span className="text-gradient">next night out</span>
+                            </h2>
+                        </Reveal>
+
+                        <div className="grid gap-6 md:grid-cols-3">
+                            {steps.map((step, index) => (
+                                <Reveal key={step.number} delay={index * 120}>
+                                    <article className="card-surface card-hover relative h-full overflow-hidden rounded-3xl p-7">
+                                        <span className="pointer-events-none absolute -right-4 -top-6 font-display text-8xl font-extrabold text-white/[0.04]">
+                                            {step.number}
+                                        </span>
+                                        <span className="relative grid h-13 w-13 place-items-center rounded-2xl bg-gradient-to-br from-brand-500/30 to-accent-500/20 text-brand-300 ring-1 ring-brand-500/30">
+                                            <step.icon className="h-6 w-6" />
+                                        </span>
+                                        <h3 className="relative mt-5 font-display text-xl font-bold text-white">
+                                            {step.title}
+                                        </h3>
+                                        <p className="relative mt-2 leading-7 text-slate-400">
+                                            {step.description}
+                                        </p>
+                                    </article>
+                                </Reveal>
+                            ))}
+                        </div>
+                    </div>
+                </section>
+
+                {/* CTA */}
+                <section className="mx-auto max-w-7xl px-4 py-20 sm:px-6 sm:py-28">
+                    <Reveal>
+                        <div className="gradient-border relative overflow-hidden rounded-[2.5rem] bg-grid">
+                            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,_rgba(99,102,241,0.25),_transparent_60%)]" />
+                            <div className="relative grid items-center gap-10 px-8 py-14 sm:px-14 lg:grid-cols-[1.2fr_0.8fr]">
+                                <div className="text-center lg:text-left">
+                                    <span className="inline-flex items-center gap-2 rounded-full border border-accent-400/30 bg-accent-500/10 px-4 py-1.5 text-xs font-semibold uppercase tracking-[0.18em] text-accent-300">
+                                        <SparklesIcon className="h-3.5 w-3.5" />
+                                        Your next experience is waiting
+                                    </span>
+                                    <h2 className="mt-5 font-display text-3xl font-extrabold tracking-tight text-white sm:text-5xl">
+                                        Go from “we should” to{' '}
+                                        <span className="text-gradient">“that was amazing.”</span>
+                                    </h2>
+                                    <p className="mx-auto mt-4 max-w-xl leading-7 text-slate-400 lg:mx-0">
+                                        Join Eventora to explore events and keep the ones you love close.
+                                    </p>
+                                    <Link
+                                        to="/register"
+                                        className="mt-8 inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-brand-600 to-brand-500 px-8 py-4 font-semibold text-white shadow-xl shadow-brand-600/30 transition hover:shadow-brand-500/50 hover:brightness-110"
+                                    >
+                                        Get started free
+                                        <ArrowRightIcon className="h-5 w-5" />
+                                    </Link>
+                                </div>
+                                <div className="relative mx-auto hidden w-full max-w-sm lg:block">
+                                    <div className="absolute -inset-4 animate-pulse-soft rounded-[2rem] bg-accent-500/15 blur-2xl" />
+                                    <img
+                                        src={heroImage}
+                                        alt="Eventora community"
+                                        className="relative h-64 w-full rounded-[1.75rem] border border-surface-border object-cover"
+                                    />
+                                    <div className="glass absolute -bottom-5 left-1/2 flex -translate-x-1/2 items-center gap-2 whitespace-nowrap rounded-2xl px-5 py-3 shadow-xl">
+                                        <ShieldIcon className="h-4 w-4 text-emerald-400" />
+                                        <span className="text-sm font-semibold">Free to join</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </Reveal>
                 </section>
             </main>
             <Footer />

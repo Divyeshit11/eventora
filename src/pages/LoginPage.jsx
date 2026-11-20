@@ -1,10 +1,10 @@
 import { useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { Link, Navigate, useLocation } from 'react-router'
-import Navbar from '../Components/layout/Navbar'
-import Footer from '../Components/layout/Footer'
+import AuthLayout from '../Components/common/AuthLayout'
 import Button from '../Components/common/Button'
 import PasswordInput from '../Components/common/PasswordInput'
+import { MailIcon } from '../Components/common/icons'
 import { loginThunk } from '../features/auth/authSlice'
 
 function LoginPage() {
@@ -40,24 +40,20 @@ function LoginPage() {
     }
 
     return (
-        <div className="min-h-screen bg-surface text-white">
-            <Navbar />
-            <main className="mx-auto max-w-md px-4 py-16 sm:px-6">
-                <h1 className="text-3xl font-bold">Sign in to Eventora</h1>
-                <p className="mt-3 text-slate-400">
-                    Sign in to your account to continue.
+        <AuthLayout
+            title="Sign in to Eventora"
+            subtitle="Welcome back — sign in to continue discovering events."
+        >
+            {location.state?.notice && (
+                <p className="mb-5 rounded-xl border border-emerald-800 bg-emerald-950/30 px-4 py-3 text-sm text-emerald-300" role="status">
+                    {location.state.notice}
                 </p>
-                {location.state?.notice && (
-                    <p className="mt-4 text-sm text-green-300" role="status">
-                        {location.state.notice}
-                    </p>
-                )}
-                <form
-                    onSubmit={handleSubmit}
-                    className="mt-8 grid gap-5 rounded-2xl border border-surface-border bg-surface-card p-6"
-                >
-                    <label className="grid gap-2 text-sm text-slate-300">
-                        Email address
+            )}
+            <form onSubmit={handleSubmit} className="grid gap-5">
+                <label className="grid gap-2 text-sm font-medium text-slate-300">
+                    Email address
+                    <span className="relative">
+                        <MailIcon className="pointer-events-none absolute left-4 top-1/2 h-4.5 w-4.5 -translate-y-1/2 text-slate-500" />
                         <input
                             type="email"
                             autoComplete="email"
@@ -65,47 +61,47 @@ function LoginPage() {
                             onChange={(event) => setEmail(event.target.value)}
                             maxLength="254"
                             required
-                            className="rounded-lg border border-surface-border bg-surface px-3 py-3 text-white"
+                            placeholder="you@example.com"
+                            className="field field-with-icon py-3"
                         />
-                    </label>
-                    <PasswordInput
-                        label="Password"
-                        autoComplete="current-password"
-                        value={password}
-                        onChange={(event) => {
-                            setPassword(event.target.value)
-                            setPasswordError('')
-                        }}
-                    />
-                    <Link
-                        to="/forgot-password"
-                        className="-mt-3 justify-self-end text-sm text-brand-400 hover:text-brand-300"
-                    >
-                        Forgot password?
-                    </Link>
-                    {passwordError && (
-                        <p role="alert" className="text-sm text-red-300">
-                            {passwordError}
-                        </p>
-                    )}
-                    {error && (
-                        <p role="alert" className="text-sm text-red-300">
-                            {error}
-                        </p>
-                    )}
-                    <Button type="submit" disabled={status === 'loading'}>
-                        {status === 'loading' ? 'Signing in...' : 'Sign in'}
-                    </Button>
-                    <p className="text-sm text-slate-400">
-                        Need an account?{' '}
-                        <Link to="/register" className="text-brand-400 hover:text-brand-300">
-                            Create one
-                        </Link>
+                    </span>
+                </label>
+                <PasswordInput
+                    label="Password"
+                    autoComplete="current-password"
+                    value={password}
+                    onChange={(event) => {
+                        setPassword(event.target.value)
+                        setPasswordError('')
+                    }}
+                />
+                <Link
+                    to="/forgot-password"
+                    className="-mt-3 justify-self-end text-sm font-medium text-brand-400 transition hover:text-brand-300"
+                >
+                    Forgot password?
+                </Link>
+                {passwordError && (
+                    <p role="alert" className="rounded-xl border border-red-800 bg-red-950/30 px-4 py-3 text-sm text-red-300">
+                        {passwordError}
                     </p>
-                </form>
-            </main>
-            <Footer />
-        </div>
+                )}
+                {error && (
+                    <p role="alert" className="rounded-xl border border-red-800 bg-red-950/30 px-4 py-3 text-sm text-red-300">
+                        {error}
+                    </p>
+                )}
+                <Button type="submit" disabled={status === 'loading'} className="w-full py-3.5">
+                    {status === 'loading' ? 'Signing in...' : 'Sign in'}
+                </Button>
+                <p className="text-center text-sm text-slate-400">
+                    Need an account?{' '}
+                    <Link to="/register" className="font-semibold text-brand-400 transition hover:text-brand-300">
+                        Create one
+                    </Link>
+                </p>
+            </form>
+        </AuthLayout>
     )
 }
 

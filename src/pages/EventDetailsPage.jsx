@@ -5,8 +5,27 @@ import Navbar from '../Components/layout/Navbar'
 import Footer from '../Components/layout/Footer'
 import Badge from '../Components/common/Badge'
 import EventImage from '../Components/common/EventImage'
+import Reveal from '../Components/common/Reveal'
+import EmptyState from '../Components/common/EmptyState'
 import { selectEventById } from '../features/events/eventsSelectors'
 import { createPaymentOrder, getEventById, verifyPayment } from '../services/eventService'
+import {
+    ArrowLeftIcon,
+    MapPinIcon,
+    CalendarIcon,
+    TicketIcon,
+    WalletIcon,
+    CompassIcon,
+    SparklesIcon,
+} from '../Components/common/icons'
+
+const categoryVariants = {
+    Technology: 'technology',
+    Music: 'music',
+    Business: 'business',
+    Comedy: 'comedy',
+    Other: 'other',
+}
 
 function EventDetailPage() {
     const { eventId } = useParams()
@@ -64,6 +83,7 @@ function EventDetailPage() {
     const ticketsRemaining = event
         ? Math.max(0, (event.ticketCapacity ?? 100) - (event.ticketsSold ?? 0))
         : 0
+    const totalPrice = event ? Number(event.price) * quantity : 0
 
     async function handleBooking() {
         setBooking({ status: 'loading', message: '' })
@@ -94,7 +114,7 @@ function EventDetailPage() {
                     }
                 },
                 modal: { ondismiss: () => setBooking({ status: 'idle', message: 'Payment was not completed. Your seat reservation expires in 15 minutes.' }) },
-                theme: { color: '#7c3aed' },
+                theme: { color: '#6366f1' },
             })
             checkout.open()
         } catch (bookingError) {
@@ -109,105 +129,205 @@ function EventDetailPage() {
         <div className="min-h-screen bg-surface text-white">
             <Navbar />
 
-            <main className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:py-16">
-                <Link
-                    to="/events"
-                    className="inline-block text-sm text-slate-400 transition hover:text-white"
-                >
-                    ← Back to Events
-                </Link>
+            <main className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:py-14">
+                <Reveal>
+                    <Link
+                        to="/events"
+                        className="group inline-flex items-center gap-2 text-sm font-medium text-slate-400 transition hover:text-white"
+                    >
+                        <ArrowLeftIcon className="h-4 w-4 transition-transform group-hover:-translate-x-1" />
+                        Back to Events
+                    </Link>
+                </Reveal>
 
                 {status === 'loading' && (
-                    <p className="py-16 text-center text-slate-400" role="status">
-                        Loading event...
-                    </p>
+                    <div className="grid gap-10 py-16 lg:grid-cols-2" aria-live="polite">
+                        <div className="img-shimmer h-72 w-full animate-pulse rounded-3xl sm:h-96" />
+                        <div className="space-y-4">
+                            <div className="h-6 w-32 animate-pulse rounded-full bg-surface-raised" />
+                            <div className="h-10 w-3/4 animate-pulse rounded-xl bg-surface-raised" />
+                            <div className="h-4 w-1/2 animate-pulse rounded-lg bg-surface-raised" />
+                            <div className="h-24 w-full animate-pulse rounded-2xl bg-surface-raised" />
+                        </div>
+                        <p className="sr-only" role="status">Loading event...</p>
+                    </div>
                 )}
 
                 {status === 'failed' && (
-                    <section className="mx-auto max-w-3xl py-16 text-center">
-                        <h1 className="text-3xl font-bold">Event unavailable</h1>
-                        <p className="mt-4 text-slate-400">{error}</p>
-                        <Link
-                            to="/events"
-                            className="mt-6 inline-block text-brand-500 hover:text-brand-400"
-                        >
-                            Browse Events
-                        </Link>
-                    </section>
+                    <EmptyState
+                        className="mx-auto mt-10 max-w-3xl"
+                        icon={<CompassIcon className="h-9 w-9" />}
+                        title="Event unavailable"
+                        description={error}
+                        action={
+                            <Link
+                                to="/events"
+                                className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-brand-600 to-brand-500 px-6 py-3 font-semibold text-white shadow-lg shadow-brand-600/30 transition hover:brightness-110"
+                            >
+                                Browse Events
+                                <ArrowLeftIcon className="h-4 w-4 rotate-180" />
+                            </Link>
+                        }
+                    />
                 )}
 
                 {status === 'succeeded' && !event && (
-                    <section className="mx-auto max-w-3xl py-16 text-center">
-                        <h1 className="text-3xl font-bold">Event not found</h1>
-                        <p className="mt-4 text-slate-400">
-                            Sorry, we couldn't find the event you're looking for.
-                        </p>
-                    </section>
+                    <EmptyState
+                        className="mx-auto mt-10 max-w-3xl"
+                        icon={<CompassIcon className="h-9 w-9" />}
+                        title="Event not found"
+                        description="Sorry, we couldn't find the event you're looking for."
+                        action={
+                            <Link
+                                to="/events"
+                                className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-brand-600 to-brand-500 px-6 py-3 font-semibold text-white shadow-lg shadow-brand-600/30 transition hover:brightness-110"
+                            >
+                                Browse Events
+                                <ArrowLeftIcon className="h-4 w-4 rotate-180" />
+                            </Link>
+                        }
+                    />
                 )}
 
                 {event && (
-                    <div className="mt-8 grid gap-10 lg:grid-cols-2 lg:items-start">
-                        <EventImage
-                            src={event.image}
-                            alt={event.title}
-                            className="h-72 w-full rounded-2xl border border-surface-border object-cover sm:h-96"
-                        />
+                    <div className="mt-8 grid gap-10 lg:grid-cols-[1.15fr_0.85fr] lg:items-start">
+                        {/* Media + details */}
                         <div>
-                            <Badge variant={event.category?.toLowerCase()}>
-                                {event.category}
-                            </Badge>
+                            <Reveal>
+                                <div className="gradient-border relative overflow-hidden rounded-[2rem]">
+                                    <EventImage
+                                        src={event.image}
+                                        alt={event.title}
+                                        className="h-72 w-full object-cover sm:h-[26rem]"
+                                    />
+                                    <div className="absolute inset-0 bg-gradient-to-t from-surface via-transparent to-transparent" />
+                                    <div className="absolute bottom-5 left-5">
+                                        <Badge variant={categoryVariants[event.category] ?? 'other'}>
+                                            {event.category}
+                                        </Badge>
+                                    </div>
+                                </div>
+                            </Reveal>
 
-                            <h1 className="mt-5 text-3xl font-bold sm:text-5xl">
-                                {event.title}
-                            </h1>
+                            <Reveal delay={120}>
+                                <h1 className="mt-8 font-display text-3xl font-extrabold tracking-tight text-white sm:text-5xl">
+                                    {event.title}
+                                </h1>
+                            </Reveal>
 
-                            <div className="mt-6 space-y-4 text-slate-300">
-                                <p>📍 Location: {event.location}</p>
-                                <p>📅 Date: {event.date}</p>
-                                <p className="text-2xl font-bold text-white">
-                                    Price: ₹{event.price}
-                                </p>
-                            </div>
+                            <Reveal delay={200}>
+                                <div className="mt-6 grid gap-3 sm:grid-cols-3">
+                                    <div className="card-surface flex items-center gap-3 rounded-2xl p-4">
+                                        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-brand-500/15 text-brand-300 ring-1 ring-brand-500/30">
+                                            <MapPinIcon className="h-5 w-5" />
+                                        </span>
+                                        <div className="min-w-0">
+                                            <p className="text-xs text-slate-500">Location</p>
+                                            <p className="truncate text-sm font-semibold text-white">{event.location}</p>
+                                        </div>
+                                    </div>
+                                    <div className="card-surface flex items-center gap-3 rounded-2xl p-4">
+                                        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-accent-500/15 text-accent-300 ring-1 ring-accent-500/30">
+                                            <CalendarIcon className="h-5 w-5" />
+                                        </span>
+                                        <div className="min-w-0">
+                                            <p className="text-xs text-slate-500">Date</p>
+                                            <p className="truncate text-sm font-semibold text-white">{event.date}</p>
+                                        </div>
+                                    </div>
+                                    <div className="card-surface flex items-center gap-3 rounded-2xl p-4">
+                                        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-emerald-500/15 text-emerald-300 ring-1 ring-emerald-500/30">
+                                            <TicketIcon className="h-5 w-5" />
+                                        </span>
+                                        <div className="min-w-0">
+                                            <p className="text-xs text-slate-500">Tickets left</p>
+                                            <p className="text-sm font-semibold text-white">
+                                                {ticketsRemaining > 0 ? ticketsRemaining : 'Sold out'}
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </Reveal>
 
-                            <p className="mt-6 leading-7 text-slate-400">
-                                {event.description ||
-                                    'Discover this event with Eventora. Explore the event details and find an experience that matches your interests.'}
-                            </p>
+                            <Reveal delay={280}>
+                                <div className="card-surface mt-8 rounded-3xl p-6 sm:p-8">
+                                    <h2 className="flex items-center gap-2 font-display text-lg font-bold text-white">
+                                        <SparklesIcon className="h-5 w-5 text-accent-400" />
+                                        About this event
+                                    </h2>
+                                    <p className="mt-4 leading-8 text-slate-300">
+                                        {event.description ||
+                                            'Discover this event with Eventora. Explore the event details and find an experience that matches your interests.'}
+                                    </p>
+                                </div>
+                            </Reveal>
+                        </div>
 
-                            <div className="mt-8">
-                                <p className="mb-3 text-sm text-slate-400">
-                                    {ticketsRemaining > 0 ? `${ticketsRemaining} ticket${ticketsRemaining === 1 ? '' : 's'} remaining` : 'Sold out'}
-                                </p>
-                                <div className="flex flex-wrap items-center gap-3">
-                                    <label className="text-sm text-slate-300">
-                                        Tickets
+                        {/* Booking panel */}
+                        <Reveal delay={200} className="lg:sticky lg:top-24">
+                            <div className="gradient-border card-surface rounded-[2rem] p-6 sm:p-7">
+                                <div className="flex items-end justify-between gap-4">
+                                    <div>
+                                        <p className="text-sm text-slate-400">Ticket price</p>
+                                        <p className="font-display text-4xl font-extrabold text-white">
+                                            ₹{event.price}
+                                        </p>
+                                    </div>
+                                    <span className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                                        ticketsRemaining > 0
+                                            ? 'bg-emerald-500/15 text-emerald-300 ring-1 ring-emerald-500/30'
+                                            : 'bg-red-500/15 text-red-300 ring-1 ring-red-500/30'
+                                    }`}>
+                                        {ticketsRemaining > 0 ? 'Available' : 'Sold out'}
+                                    </span>
+                                </div>
+
+                                <div className="mt-6 border-t border-surface-border/70 pt-6">
+                                    <label className="grid gap-2 text-sm font-medium text-slate-300">
+                                        Number of tickets
                                         <select
                                             value={quantity}
-                                            onChange={(event) => setQuantity(Number(event.target.value))}
+                                            onChange={(e) => setQuantity(Number(e.target.value))}
                                             disabled={ticketsRemaining === 0 || booking.status === 'loading'}
-                                            className="ml-2 rounded-lg border border-surface-border bg-surface px-3 py-3 text-white"
+                                            className="field py-3"
                                         >
                                             {Array.from({ length: Math.min(10, ticketsRemaining) }, (_, index) => index + 1).map((value) => (
                                                 <option key={value} value={value}>{value}</option>
                                             ))}
                                         </select>
                                     </label>
+
+                                    <div className="mt-4 flex items-center justify-between rounded-2xl bg-surface/60 px-4 py-3 text-sm">
+                                        <span className="text-slate-400">Total</span>
+                                        <span className="font-display text-lg font-bold text-white">₹{totalPrice}</span>
+                                    </div>
+
                                     <button
                                         type="button"
                                         onClick={handleBooking}
                                         disabled={ticketsRemaining === 0 || booking.status === 'loading'}
-                                        className="rounded-xl bg-brand-600 px-5 py-3 font-semibold text-white transition hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-50"
+                                        className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-brand-600 to-brand-500 px-6 py-4 font-semibold text-white shadow-lg shadow-brand-600/30 transition hover:shadow-brand-500/50 hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
                                     >
+                                        <WalletIcon className="h-5 w-5" />
                                         {booking.status === 'loading' ? 'Opening secure payment...' : 'Book This Event'}
                                     </button>
-                                </div>
-                                {booking.message && (
-                                    <p className={`mt-3 text-sm ${booking.status === 'failed' ? 'text-red-300' : 'text-emerald-300'}`} role={booking.status === 'failed' ? 'alert' : 'status'}>
-                                        {booking.message}
+
+                                    {booking.message && (
+                                        <p className={`mt-4 rounded-xl border px-4 py-3 text-sm ${booking.status === 'failed'
+                                            ? 'border-red-800 bg-red-950/30 text-red-300'
+                                            : 'border-emerald-800 bg-emerald-950/30 text-emerald-300'
+                                            }`} role={booking.status === 'failed' ? 'alert' : 'status'}>
+                                            {booking.message}
+                                        </p>
+                                    )}
+
+                                    <p className="mt-4 flex items-center gap-2 text-xs text-slate-500">
+                                        <SparklesIcon className="h-3.5 w-3.5 text-brand-400" />
+                                        Secure checkout powered by Razorpay
                                     </p>
-                                )}
+                                </div>
                             </div>
-                        </div>
+                        </Reveal>
                     </div>
                 )}
             </main>

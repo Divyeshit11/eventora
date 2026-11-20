@@ -1,10 +1,19 @@
-
 import { useState } from 'react'
 import EventGrid from './EventGrid'
 import EventFilters from './Eventfilters'
 import { Link } from 'react-router'
 import EventImage from '../common/EventImage'
+import EmptyState from '../common/EmptyState'
+import Reveal from '../common/Reveal'
 import { getEventId } from '../../utils/eventIdentity'
+import {
+    CompassIcon,
+    GridIcon,
+    ListIcon,
+    MapPinIcon,
+    CalendarIcon,
+    ArrowRightIcon,
+} from '../common/icons'
 
 function FeaturedEvents({
     events,
@@ -52,21 +61,23 @@ function FeaturedEvents({
     return (
         <section
             id="events"
-            className="mx-auto max-w-7xl px-4 py-16 sm:px-6 sm:py-20"
+            className="relative mx-auto max-w-7xl px-4 py-16 sm:px-6 sm:py-20"
         >
-            <div className="mb-8">
-                <p className="text-sm font-semibold uppercase tracking-wider text-brand-500">
+            <div className="pointer-events-none absolute inset-x-0 top-0 h-64 bg-[radial-gradient(ellipse_at_top,_rgba(99,102,241,0.12),_transparent_65%)]" />
+            <Reveal className="relative mb-8">
+                <span className="inline-flex items-center gap-2 rounded-full border border-brand-500/30 bg-brand-500/10 px-4 py-1.5 text-xs font-semibold uppercase tracking-[0.18em] text-brand-300">
+                    <CompassIcon className="h-3.5 w-3.5" />
                     Explore
-                </p>
+                </span>
 
-                <h2 className="mt-2 text-3xl font-bold text-white sm:text-4xl">
-                    Discover Events
+                <h2 className="mt-4 font-display text-3xl font-extrabold tracking-tight text-white sm:text-4xl">
+                    Discover <span className="text-gradient">Events</span>
                 </h2>
 
-                <p className="mt-3 text-slate-400">
-                    Find events that match your interests.
+                <p className="mt-3 max-w-xl text-slate-400">
+                    Find events that match your interests — from live music to tech talks.
                 </p>
-            </div>
+            </Reveal>
 
             {showFilters && (
                 <EventFilters
@@ -86,7 +97,7 @@ function FeaturedEvents({
                 aria-live="polite"
             >
                 <p>
-                    {totalEvents.toLocaleString()} events found
+                    <span className="font-semibold text-white">{totalEvents.toLocaleString()}</span> events found
                 </p>
 
                 {totalPages > 0 && (
@@ -105,33 +116,48 @@ function FeaturedEvents({
                     type="button"
                     onClick={() => setViewMode('grid')}
                     aria-pressed={viewMode === 'grid'}
-                    className={`rounded-lg px-4 py-2 text-sm font-medium transition ${viewMode === 'grid'
-                            ? 'bg-brand-600 text-white'
-                            : 'border border-surface-border text-slate-300 hover:bg-slate-800'
+                    aria-label="Grid view"
+                    className={`grid h-10 w-10 place-items-center rounded-xl border transition-all duration-200 ${viewMode === 'grid'
+                            ? 'border-transparent bg-gradient-to-r from-brand-600 to-brand-500 text-white shadow-lg shadow-brand-600/30'
+                            : 'border-surface-border bg-surface-card text-slate-300 hover:border-brand-500/50 hover:text-white'
                         }`}
                 >
-                    ▦ Grid
+                    <GridIcon className="h-4.5 w-4.5" />
                 </button>
 
                 <button
                     type="button"
                     onClick={() => setViewMode('list')}
                     aria-pressed={viewMode === 'list'}
-                    className={`rounded-lg px-4 py-2 text-sm font-medium transition ${viewMode === 'list'
-                            ? 'bg-brand-600 text-white'
-                            : 'border border-surface-border text-slate-300 hover:bg-slate-800'
+                    aria-label="List view"
+                    className={`grid h-10 w-10 place-items-center rounded-xl border transition-all duration-200 ${viewMode === 'list'
+                            ? 'border-transparent bg-gradient-to-r from-brand-600 to-brand-500 text-white shadow-lg shadow-brand-600/30'
+                            : 'border-surface-border bg-surface-card text-slate-300 hover:border-brand-500/50 hover:text-white'
                         }`}
                 >
-                    ☰ List
+                    <ListIcon className="h-4.5 w-4.5" />
                 </button>
             </div>
 
             {isLoading ? (
-                <p className="py-12 text-center text-slate-400">
-                    Loading events...
-                </p>
+                <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3" aria-live="polite">
+                    {Array.from({ length: 6 }).map((_, index) => (
+                        <div
+                            key={index}
+                            className="card-surface animate-pulse overflow-hidden rounded-3xl"
+                        >
+                            <div className="img-shimmer h-52 w-full" />
+                            <div className="space-y-3 p-5">
+                                <div className="h-5 w-3/4 rounded-lg bg-surface-raised" />
+                                <div className="h-4 w-1/2 rounded-lg bg-surface-raised" />
+                                <div className="h-4 w-2/3 rounded-lg bg-surface-raised" />
+                            </div>
+                        </div>
+                    ))}
+                    <p className="sr-only" role="status">Loading events...</p>
+                </div>
             ) : error ? (
-                <p className="rounded-xl border border-red-800 bg-red-950/30 p-6 text-center text-red-300" role="alert">
+                <p className="rounded-2xl border border-red-800 bg-red-950/30 p-6 text-center text-red-300" role="alert">
                     {error}
                 </p>
             ) : events.length > 0 ? (
@@ -140,44 +166,51 @@ function FeaturedEvents({
                         <EventGrid events={events} />
                     ) : (
                         <div className="space-y-4">
-                            {events.map((event) => (
-                                <article
-                                    key={getEventId(event)}
-                                    className="flex flex-col gap-4 overflow-hidden rounded-2xl border border-surface-border bg-surface-card p-4 sm:flex-row sm:items-center"
-                                >
-                                    <EventImage
-                                        src={event.image || undefined}
-                                        alt={event.title}
-                                        className="h-48 w-full rounded-xl object-cover sm:h-28 sm:w-40"
-                                    />
+                            {events.map((event, index) => (
+                                <Reveal key={getEventId(event)} delay={Math.min(index, 6) * 60}>
+                                    <article className="card-surface card-hover flex flex-col gap-4 overflow-hidden rounded-3xl p-4 sm:flex-row sm:items-center">
+                                        <EventImage
+                                            src={event.image || undefined}
+                                            alt={event.title}
+                                            className="h-48 w-full rounded-2xl object-cover sm:h-28 sm:w-40"
+                                        />
 
-                                    <div className="min-w-0 flex-1">
-                                        <p className="text-sm text-brand-500">
-                                            {event.category}
-                                        </p>
+                                        <div className="min-w-0 flex-1">
+                                            <p className="text-sm font-semibold text-brand-400">
+                                                {event.category}
+                                            </p>
 
-                                        <h3 className="mt-1 text-xl font-semibold text-white">
-                                            {event.title}
-                                        </h3>
+                                            <h3 className="mt-1 font-display text-xl font-bold text-white">
+                                                {event.title}
+                                            </h3>
 
-                                        <p className="mt-2 text-sm text-slate-400">
-                                            {event.location} · {event.date}
-                                        </p>
-                                    </div>
+                                            <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm text-slate-400">
+                                                <span className="inline-flex items-center gap-1.5">
+                                                    <MapPinIcon className="h-4 w-4 text-brand-400" />
+                                                    {event.location}
+                                                </span>
+                                                <span className="inline-flex items-center gap-1.5">
+                                                    <CalendarIcon className="h-4 w-4 text-accent-400" />
+                                                    {event.date}
+                                                </span>
+                                            </div>
+                                        </div>
 
-                                    <div className="flex items-center justify-between gap-4 sm:flex-col sm:items-end">
-                                        <p className="text-lg font-bold text-white">
-                                            ₹{event.price}
-                                        </p>
+                                        <div className="flex items-center justify-between gap-4 sm:flex-col sm:items-end">
+                                            <p className="font-display text-lg font-extrabold text-white">
+                                                ₹{event.price}
+                                            </p>
 
-                                        <Link
-                                            to={`/events/${getEventId(event)}`}
-                                            className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-brand-700"
-                                        >
-                                            View Event
-                                        </Link>
-                                    </div>
-                                </article>
+                                            <Link
+                                                to={`/events/${getEventId(event)}`}
+                                                className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-brand-600 to-brand-500 px-4 py-2.5 text-sm font-semibold text-white shadow-md shadow-brand-600/25 transition hover:shadow-brand-500/40 hover:brightness-110"
+                                            >
+                                                View Event
+                                                <ArrowRightIcon className="h-4 w-4" />
+                                            </Link>
+                                        </div>
+                                    </article>
+                                </Reveal>
                             ))}
                         </div>
                     )}
@@ -190,7 +223,7 @@ function FeaturedEvents({
                                 disabled={
                                     currentPage === 1 || isLoading
                                 }
-                                className="rounded-lg border border-surface-border px-4 py-2 text-sm text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-40"
+                                className="rounded-xl border border-surface-border bg-surface-card px-4 py-2.5 text-sm font-medium text-white transition hover:border-brand-500/50 hover:bg-surface-raised disabled:cursor-not-allowed disabled:opacity-40"
                             >
                                 Previous
                             </button>
@@ -216,9 +249,9 @@ function FeaturedEvents({
                                                 ? 'page'
                                                 : undefined
                                         }
-                                        className={`rounded-lg px-4 py-2 text-sm font-semibold transition ${currentPage === page
-                                                ? 'bg-brand-600 text-white'
-                                                : 'border border-surface-border text-slate-300 hover:bg-slate-800'
+                                        className={`min-w-10 rounded-xl px-4 py-2.5 text-sm font-semibold transition ${currentPage === page
+                                                ? 'bg-gradient-to-r from-brand-600 to-brand-500 text-white shadow-lg shadow-brand-600/30'
+                                                : 'border border-surface-border bg-surface-card text-slate-300 hover:border-brand-500/50 hover:text-white'
                                             }`}
                                     >
                                         {page}
@@ -232,7 +265,7 @@ function FeaturedEvents({
                                 disabled={
                                     currentPage >= totalPages || isLoading
                                 }
-                                className="rounded-lg border border-surface-border px-4 py-2 text-sm text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-40"
+                                className="rounded-xl border border-surface-border bg-surface-card px-4 py-2.5 text-sm font-medium text-white transition hover:border-brand-500/50 hover:bg-surface-raised disabled:cursor-not-allowed disabled:opacity-40"
                             >
                                 Next
                             </button>
@@ -240,23 +273,20 @@ function FeaturedEvents({
                     )}
                 </>
             ) : (
-                <div className="rounded-2xl border border-surface-border bg-surface-card px-6 py-12 text-center">
-                    <h3 className="text-xl font-semibold text-white">
-                        No events found
-                    </h3>
-
-                    <p className="mt-2 text-slate-400">
-                        Try changing your search, category, or price.
-                    </p>
-
-                    <button
-                        type="button"
-                        onClick={handleResetFilters}
-                        className="mt-5 rounded-lg bg-brand-600 px-4 py-2 font-medium text-white transition hover:bg-brand-700"
-                    >
-                        Reset Filters
-                    </button>
-                </div>
+                <EmptyState
+                    icon={<CompassIcon className="h-9 w-9" />}
+                    title="No events found"
+                    description="Try changing your search, category, or price to discover something new."
+                    action={
+                        <button
+                            type="button"
+                            onClick={handleResetFilters}
+                            className="rounded-xl bg-gradient-to-r from-brand-600 to-brand-500 px-6 py-3 font-semibold text-white shadow-lg shadow-brand-600/30 transition hover:brightness-110"
+                        >
+                            Reset Filters
+                        </button>
+                    }
+                />
             )}
         </section>
     )

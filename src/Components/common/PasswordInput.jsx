@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { EyeIcon, EyeOffIcon } from './icons'
 
 function PasswordInput({
     label,
@@ -12,7 +13,7 @@ function PasswordInput({
     const [isVisible, setIsVisible] = useState(false)
 
     return (
-        <label className="grid gap-2 text-sm text-slate-300">
+        <label className="grid gap-2 text-sm font-medium text-slate-300">
             {label}
             <span className="relative">
                 <input
@@ -23,16 +24,16 @@ function PasswordInput({
                     minLength={minLength}
                     maxLength={maxLength}
                     required={required}
-                    className="w-full rounded-lg border border-surface-border bg-surface px-3 py-3 pr-16 text-white"
+                    className="field w-full py-3 pr-12"
                 />
                 <button
                     type="button"
                     aria-label={isVisible ? 'Hide password' : 'Show password'}
                     aria-pressed={isVisible}
                     onClick={() => setIsVisible((visible) => !visible)}
-                    className="absolute inset-y-0 right-3 my-auto text-xs font-semibold text-brand-300 hover:text-white"
+                    className="absolute inset-y-0 right-3 my-auto grid h-8 w-8 place-items-center rounded-lg text-slate-400 transition hover:bg-surface-raised hover:text-white"
                 >
-                    {isVisible ? 'Hide' : 'Show'}
+                    {isVisible ? <EyeOffIcon className="h-4.5 w-4.5" /> : <EyeIcon className="h-4.5 w-4.5" />}
                 </button>
             </span>
         </label>

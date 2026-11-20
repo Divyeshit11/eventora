@@ -5,6 +5,7 @@ import Papa from 'papaparse'
 
 import { fetchEvents } from '../../features/events/eventsSlice'
 import { importEventsFromCsv } from '../../services/eventService'
+import { DownloadIcon, UploadIcon } from '../common/icons'
 
 const requiredHeaders = [
     'title',
@@ -231,16 +232,23 @@ function CsvImport({ onEventsRefreshed }) {
     }
 
     return (
-        <section className="mx-auto max-w-7xl px-4 pt-8 sm:px-6">
-            <div className="rounded-2xl border border-surface-border bg-surface-card p-5 sm:p-6">
+        <section className="mx-auto max-w-7xl px-4 pb-4 sm:px-6">
+            <div className="card-surface gradient-border rounded-3xl p-5 sm:p-8">
 
-                <h2 className="text-xl font-bold text-white">
-                    Import Events from CSV
-                </h2>
+                <div className="flex items-start gap-4">
+                    <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-gradient-to-br from-brand-500/30 to-accent-500/20 text-brand-300 ring-1 ring-brand-500/30">
+                        <UploadIcon className="h-6 w-6" />
+                    </span>
+                    <div>
+                        <h2 className="font-display text-xl font-bold text-white">
+                            Import Events from CSV
+                        </h2>
 
-                <p className="mt-2 text-sm text-slate-400">
-                    Choose a single-file import or upload a batch of up to 10 CSV files. Maximum file size: 10 MB per file.
-                </p>
+                        <p className="mt-1 text-sm text-slate-400">
+                            Choose a single-file import or upload a batch of up to 10 CSV files. Maximum file size: 10 MB per file.
+                        </p>
+                    </div>
+                </div>
 
                 <div className="mt-5 inline-flex rounded-lg border border-surface-border p-1" role="group" aria-label="CSV upload mode">
                     <button
@@ -266,8 +274,9 @@ function CsvImport({ onEventsRefreshed }) {
                 <button
                     type="button"
                     onClick={downloadCsvTemplate}
-                    className="mt-4 rounded-lg border border-surface-border px-4 py-2 text-sm font-semibold text-slate-300 hover:bg-slate-800"
+                    className="mt-4 inline-flex items-center gap-2 rounded-xl border border-surface-border bg-surface-card px-4 py-2.5 text-sm font-semibold text-slate-200 transition hover:border-brand-500/50 hover:text-white"
                 >
+                    <DownloadIcon className="h-4 w-4 text-brand-400" />
                     Download CSV Template
                 </button>
 
@@ -286,8 +295,9 @@ function CsvImport({ onEventsRefreshed }) {
                         type="button"
                         onClick={handleImport}
                         disabled={files.length === 0 || status === 'uploading'}
-                        className="shrink-0 rounded-lg bg-brand-600 px-5 py-3 text-sm font-semibold text-white hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-50"
+                        className="inline-flex shrink-0 items-center gap-2 rounded-xl bg-gradient-to-r from-brand-600 to-brand-500 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-brand-600/25 transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
                     >
+                        <UploadIcon className="h-4 w-4" />
                         {status === 'uploading'
                             ? 'Importing...'
                             : uploadMode === 'single'
@@ -309,7 +319,7 @@ function CsvImport({ onEventsRefreshed }) {
                             <span>{progress}%</span>
                         </div>
                         <progress
-                            className="h-2 w-full accent-indigo-500"
+                            className="h-2.5 w-full rounded-full [&::-webkit-progress-bar]:bg-surface-raised [&::-webkit-progress-value]:bg-gradient-to-r [&::-webkit-progress-value]:from-brand-500 [&::-webkit-progress-value]:to-accent-500 [&::-moz-progress-bar]:bg-gradient-to-r [&::-moz-progress-bar]:from-brand-500 [&::-moz-progress-bar]:to-accent-500"
                             max="100"
                             value={progress}
                             aria-label="CSV import progress"
@@ -321,7 +331,7 @@ function CsvImport({ onEventsRefreshed }) {
                 {files.length > 0 && preview.length > 0 && (
                     <div className="mt-6">
                         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-                            <h3 className="font-semibold text-white">
+                            <h3 className="font-display font-semibold text-white">
                                 CSV Data Preview
                             </h3>
 
@@ -334,9 +344,9 @@ function CsvImport({ onEventsRefreshed }) {
                             Preview from the first selected file, showing {preview.length} rows.
                         </p>
 
-                        <div className="overflow-x-auto rounded-lg border border-surface-border">
+                        <div className="overflow-x-auto rounded-xl border border-surface-border">
                             <table className="w-full min-w-162.5 text-left text-sm">
-                                <thead className="bg-slate-800 text-slate-300">
+                                <thead className="bg-surface-raised text-slate-300">
                                     <tr>
                                         {requiredHeaders.map((header) => (
                                             <th
