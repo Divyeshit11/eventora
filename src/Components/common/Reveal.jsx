@@ -2,15 +2,14 @@ import { useEffect, useRef, useState } from 'react'
 
 function Reveal({ children, className = '', delay = 0, as: Tag = 'div' }) {
     const ref = useRef(null)
-    const [visible, setVisible] = useState(false)
+    // Browsers without IntersectionObserver should render content immediately.
+    // Initializing from feature support avoids a synchronous state update in an effect.
+    const [visible, setVisible] = useState(() => typeof IntersectionObserver === 'undefined')
 
     useEffect(() => {
         const node = ref.current
         if (!node) return undefined
-        if (typeof IntersectionObserver === 'undefined') {
-            setVisible(true)
-            return undefined
-        }
+        if (typeof IntersectionObserver === 'undefined') return undefined
         const observer = new IntersectionObserver(
             ([entry]) => {
                 if (entry.isIntersecting) {

@@ -344,6 +344,8 @@ export function ConfettiIcon(props) {
     )
 }
 
+// This is a component lookup helper, intentionally exported beside its icon components.
+// eslint-disable-next-line react-refresh/only-export-components
 export function categoryIcon(id) {
     switch (id) {
         case 'Music':
