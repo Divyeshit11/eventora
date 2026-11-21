@@ -39,8 +39,9 @@ api.interceptors.response.use(
 )
 
 export async function getEvents(params = {}, options = {}) {
-    const response = await api.get('/events', {
-        params,
+    const { management, ...query } = params
+    const response = await api.get(management ? '/events/manage' : '/events', {
+        params: query,
         signal: options.signal,
     })
     return response.data
@@ -60,6 +61,46 @@ export async function getEventById(id) {
 export async function createEvent(eventData) {
     const response = await api.post('/events', eventData)
     return response.data.data
+}
+
+export async function getAdminUsers(role) {
+    const response = await api.get('/admin/users', { params: role ? { role } : undefined })
+    return response.data.data
+}
+
+export async function updateUserRole(userId, role) {
+    const response = await api.patch(`/admin/users/${userId}/role`, { role })
+    return response.data.data
+}
+
+export async function getPendingEvents() {
+    const response = await api.get('/events/pending')
+    return response.data.data
+}
+
+export async function moderateEvent(eventId, status, note = '') {
+    const response = await api.patch(`/events/${eventId}/moderation`, { status, note })
+    return response.data.data
+}
+
+export async function getEventSales(eventId) {
+    const response = await api.get(`/events/${eventId}/sales`)
+    return response.data.data
+}
+
+export async function getEventAttendees(eventId) {
+    const response = await api.get(`/events/${eventId}/attendees`)
+    return response.data.data
+}
+
+export async function downloadEventAttendees(eventId) {
+    const response = await api.get(`/events/${eventId}/attendees.csv`, { responseType: 'blob' })
+    return response.data
+}
+
+export async function downloadSalesReport() {
+    const response = await api.get('/admin/reports/sales.csv', { responseType: 'blob' })
+    return response.data
 }
 
 export async function updateEvent(id, eventData) {
@@ -107,8 +148,8 @@ export async function resetPassword(credentials) {
     return response.data
 }
 
-export async function createPaymentOrder(eventId, quantity) {
-    const response = await api.post('/payments/create-order', { eventId, quantity })
+export async function createPaymentOrder(eventId, quantity, options = {}) {
+    const response = await api.post('/payments/create-order', { eventId, quantity, ...options })
     return response.data.data
 }
 
@@ -125,6 +166,26 @@ export async function getMyBookings() {
 export async function cancelBooking(bookingId) {
     const response = await api.patch(`/bookings/${bookingId}/cancel`)
     return response.data.data
+}
+
+export async function getSeatAvailability(eventId, date) {
+    const response = await api.get(`/events/${eventId}/seats`, { params: { date } })
+    return response.data.data
+}
+
+export async function getBookingTicket(bookingId) {
+    const response = await api.get(`/bookings/${bookingId}/ticket`)
+    return response.data.data
+}
+
+export async function downloadBookingTicket(bookingId) {
+    const response = await api.get(`/bookings/${bookingId}/ticket.pdf`, { responseType: 'blob' })
+    return response.data
+}
+
+export async function checkInTicket(ticketCode) {
+    const response = await api.post('/bookings/check-in', { ticketCode })
+    return response.data
 }
 
 export async function getAdminAnalytics() {

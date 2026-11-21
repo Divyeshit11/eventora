@@ -1,169 +1,37 @@
-import { useState } from "react"
-import { useDispatch, useSelector } from "react-redux"
-import { Link, NavLink } from "react-router"
-import Button from "../common/Button"
-import Logo from "../common/Logo"
-import { logout } from "../../features/auth/authSlice"
-import { MenuIcon, XIcon } from "../common/icons"
+import { useState } from 'react'
+import { useDispatch, useSelector } from 'react-redux'
+import { Link, NavLink } from 'react-router'
+import Logo from '../common/Logo'
+import { MenuIcon, XIcon } from '../common/icons'
+import { logout } from '../../features/auth/authSlice'
+
+const primaryLinks = [{ label: 'Home', to: '/' }, { label: 'Explore events', to: '/events' }]
+const personalLinks = [{ label: 'My bookings', to: '/bookings' }, { label: 'Favorites', to: '/favorites' }, { label: 'Cart', to: '/cart' }, { label: 'Account settings', to: '/account' }]
+const organizerLinks = [{ label: 'My events', to: '/manage-events' }, { label: 'Attendee check-in', to: '/check-in' }]
+const adminLinks = [{ label: 'Admin operations', to: '/admin' }, { label: 'Event manager', to: '/manage-events' }, { label: 'Analytics', to: '/analytics' }, { label: 'Attendee check-in', to: '/check-in' }]
 
 function Navbar() {
-    const [isMenuOpen, setIsMenuOpen] = useState(false)
+    const [mobileOpen, setMobileOpen] = useState(false)
+    const [accountOpen, setAccountOpen] = useState(false)
     const dispatch = useDispatch()
     const user = useSelector((state) => state.auth.user)
-    const navigation = [
-        { label: 'Home', to: '/' },
-        ...(user ? [
-            { label: 'Explore Events', to: '/events' },
-            { label: 'Favorites', to: '/favorites' },
-            { label: 'My Bookings', to: '/bookings' },
-            { label: 'Account', to: '/account' },
-        ] : []),
-        ...(user?.role === 'admin'
-            ? [{ label: 'Event Manager', to: '/manage-events' }, { label: 'Analytics', to: '/analytics' }]
-            : []),
-    ]
+    const linkClass = ({ isActive }) => `nav-link block rounded-lg px-3 py-2 text-sm font-medium transition ${isActive ? 'active text-white' : 'text-slate-300 hover:bg-slate-800 hover:text-white'}`
+    const closeMenus = () => { setMobileOpen(false); setAccountOpen(false) }
+    const avatar = user?.email?.[0]?.toUpperCase() || 'U'
 
-    const getLinkClass = ({ isActive }) =>
-        `nav-link text-sm font-medium transition-colors ${isActive
-            ? 'active text-white'
-            : 'text-slate-400 hover:text-white'
-        }`
+    const menuLinks = (links) => links.map((item) => <NavLink key={item.to} to={item.to} className={linkClass} end={item.to === '/'} onClick={closeMenus}>{item.label}</NavLink>)
 
-    const initials = (user?.email?.[0] || 'U').toUpperCase()
-
-    return (
-        <header className="glass sticky top-0 z-50 border-b border-surface-border/70">
-            <nav className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3.5 sm:px-6">
-                <Link
-                    to="/"
-                    className="shrink-0"
-                    onClick={() => setIsMenuOpen(false)}
-                >
-                    <Logo />
-                </Link>
-
-                {/* Desktop Navigation */}
-                <div className="hidden items-center gap-7 lg:flex">
-                    {navigation.map((item) => (
-                        <NavLink
-                            key={item.to}
-                            to={item.to}
-                            end={item.to === '/'}
-                            className={getLinkClass}
-                        >
-                            {item.label}
-                        </NavLink>
-                    ))}
-                </div>
-
-                <div className="hidden items-center gap-4 lg:flex">
-                    {user ? (
-                        <>
-                            <Link
-                                to="/account"
-                                className="group flex items-center gap-2.5 rounded-full border border-surface-border bg-surface-card/60 py-1.5 pl-1.5 pr-4 transition hover:border-brand-500/50"
-                            >
-                                <span className="grid h-8 w-8 place-items-center rounded-full bg-gradient-to-br from-brand-500 to-accent-500 text-xs font-bold text-white">
-                                    {initials}
-                                </span>
-                                <span className="max-w-36 truncate text-sm text-slate-300 transition group-hover:text-white" title={user.email}>
-                                    {user.email}
-                                </span>
-                            </Link>
-                            <Button variant="secondary" onClick={() => dispatch(logout())}>
-                                Sign out
-                            </Button>
-                        </>
-                    ) : (
-                        <>
-                            <Link to="/login" className="nav-link text-sm font-semibold text-slate-300 transition hover:text-white">
-                                Sign in
-                            </Link>
-                            <Link
-                                to="/register"
-                                className="rounded-xl bg-gradient-to-r from-brand-600 to-brand-500 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-brand-600/25 transition hover:shadow-brand-500/40 hover:brightness-110"
-                            >
-                                Sign up
-                            </Link>
-                        </>
-                    )}
-                </div>
-
-                <button
-                    type="button"
-                    className="grid h-10 w-10 place-items-center rounded-xl border border-surface-border bg-surface-card text-white transition hover:border-brand-500/50 lg:hidden"
-                    aria-label={isMenuOpen ? 'Close menu' : 'Open menu'}
-                    aria-expanded={isMenuOpen}
-                    onClick={() => setIsMenuOpen((open) => !open)}
-                >
-                    {isMenuOpen ? <XIcon className="h-5 w-5" /> : <MenuIcon className="h-5 w-5" />}
-                </button>
-            </nav>
-
-            {isMenuOpen && (
-                <div className="animate-fade-in border-t border-surface-border/70 px-4 py-5 lg:hidden">
-                    <div className="flex flex-col gap-1">
-                        {navigation.map((item) => (
-                            <NavLink
-                                key={item.to}
-                                to={item.to}
-                                end={item.to === '/'}
-                                className={({ isActive }) =>
-                                    `rounded-xl px-4 py-3 text-sm font-medium transition ${isActive
-                                        ? 'bg-brand-500/10 text-white'
-                                        : 'text-slate-300 hover:bg-surface-card'
-                                    }`
-                                }
-                                onClick={() => setIsMenuOpen(false)}
-                            >
-                                {item.label}
-                            </NavLink>
-                        ))}
-
-                        <div className="mt-3 border-t border-surface-border/70 pt-4">
-                            {user ? (
-                                <>
-                                    <div className="flex items-center gap-3 px-4 pb-3">
-                                        <span className="grid h-9 w-9 place-items-center rounded-full bg-gradient-to-br from-brand-500 to-accent-500 text-sm font-bold text-white">
-                                            {initials}
-                                        </span>
-                                        <span className="truncate text-sm text-slate-300">{user.email}</span>
-                                    </div>
-                                    <Button
-                                        variant="secondary"
-                                        className="w-full"
-                                        onClick={() => {
-                                            dispatch(logout())
-                                            setIsMenuOpen(false)
-                                        }}
-                                    >
-                                        Sign out
-                                    </Button>
-                                </>
-                            ) : (
-                                <div className="flex flex-col gap-2">
-                                    <Link
-                                        to="/login"
-                                        onClick={() => setIsMenuOpen(false)}
-                                        className="rounded-xl border border-surface-border px-4 py-3 text-center text-sm font-semibold text-slate-200"
-                                    >
-                                        Sign in
-                                    </Link>
-                                    <Link
-                                        to="/register"
-                                        onClick={() => setIsMenuOpen(false)}
-                                        className="rounded-xl bg-gradient-to-r from-brand-600 to-brand-500 px-4 py-3 text-center text-sm font-semibold text-white"
-                                    >
-                                        Sign up
-                                    </Link>
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                </div>
-            )}
-        </header>
-    )
+    return <header className="glass sticky top-0 z-50 border-b border-surface-border/70">
+        <nav className="mx-auto flex min-h-18 max-w-7xl items-center justify-between gap-4 px-4 py-3 sm:px-6">
+            <Link to="/" onClick={closeMenus} className="shrink-0"><Logo /></Link>
+            <div className="hidden flex-1 items-center justify-center gap-1 lg:flex">{menuLinks(primaryLinks)}</div>
+            <div className="hidden items-center gap-2 lg:flex">
+                {user ? <div className="relative"><button type="button" onClick={() => setAccountOpen((open) => !open)} aria-expanded={accountOpen} aria-haspopup="menu" className="flex max-w-60 items-center gap-2 rounded-xl border border-surface-border bg-surface-card px-3 py-2 text-left transition hover:border-brand-500/60"><span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-brand-600 text-xs font-bold">{avatar}</span><span className="max-w-32 truncate text-sm font-medium text-slate-200">{user.email}</span><span className="text-xs text-slate-400">⌄</span></button>{accountOpen && <div role="menu" className="absolute right-0 mt-2 w-64 overflow-hidden rounded-xl border border-surface-border bg-surface-card p-2 shadow-2xl"><p className="px-3 py-2 text-xs font-semibold uppercase tracking-wider text-slate-500">Your account</p>{menuLinks(personalLinks)}{['admin', 'organizer'].includes(user.role) && <><div className="my-2 border-t border-surface-border" /><p className="px-3 py-2 text-xs font-semibold uppercase tracking-wider text-slate-500">{user.role === 'admin' ? 'Administration' : 'Organizer tools'}</p>{menuLinks(user.role === 'admin' ? adminLinks : organizerLinks)}</>}<div className="my-2 border-t border-surface-border" /><button type="button" onClick={() => { dispatch(logout()); closeMenus() }} className="w-full rounded-lg px-3 py-2 text-left text-sm font-semibold text-red-300 transition hover:bg-red-500/10">Sign out</button></div>}</div> : <><Link to="/login" className="rounded-lg px-3 py-2 text-sm font-semibold text-slate-300 hover:text-white">Sign in</Link><Link to="/register" className="rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-brand-700">Create account</Link></>}
+            </div>
+            <button type="button" className="rounded-xl border border-surface-border p-2.5 text-white transition hover:bg-slate-800 lg:hidden" aria-label={mobileOpen ? 'Close menu' : 'Open menu'} aria-expanded={mobileOpen} onClick={() => setMobileOpen((open) => !open)}>{mobileOpen ? <XIcon className="h-5 w-5" /> : <MenuIcon className="h-5 w-5" />}</button>
+        </nav>
+        {mobileOpen && <div className="border-t border-surface-border bg-surface px-4 py-4 lg:hidden"><div className="mx-auto grid max-w-7xl gap-1"><p className="px-3 pb-1 text-xs font-semibold uppercase tracking-wider text-slate-500">Navigate</p>{menuLinks(primaryLinks)}{user ? <><div className="my-3 border-t border-surface-border" /><div className="flex items-center gap-3 px-3 py-2"><span className="flex h-9 w-9 items-center justify-center rounded-full bg-brand-600 font-bold">{avatar}</span><div className="min-w-0"><p className="truncate text-sm font-semibold">{user.email}</p><p className="text-xs capitalize text-slate-400">{user.role} account</p></div></div>{menuLinks(personalLinks)}{['admin', 'organizer'].includes(user.role) && <><p className="mt-3 px-3 pb-1 text-xs font-semibold uppercase tracking-wider text-slate-500">{user.role === 'admin' ? 'Administration' : 'Organizer tools'}</p>{menuLinks(user.role === 'admin' ? adminLinks : organizerLinks)}</>}<button type="button" onClick={() => { dispatch(logout()); closeMenus() }} className="mt-3 rounded-lg px-3 py-2 text-left text-sm font-semibold text-red-300 hover:bg-red-500/10">Sign out</button></> : <><div className="my-3 border-t border-surface-border" /><Link to="/login" className={linkClass} onClick={closeMenus}>Sign in</Link><Link to="/register" className="mt-1 rounded-xl bg-brand-600 px-4 py-3 text-center text-sm font-semibold text-white" onClick={closeMenus}>Create account</Link></>}</div></div>}
+    </header>
 }
 
 export default Navbar

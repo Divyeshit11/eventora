@@ -28,44 +28,275 @@ async function releaseExpiredReservations() {
             { $set: { status: 'failed' } },
             { new: true }
         )
-        if (released) await Event.updateOne({ _id: released.event }, { $inc: { ticketsSold: -released.quantity } })
+        if (released) {
+            await releaseReservedInventory(
+                released.event,
+                released.ticketItems?.length
+                    ? released.ticketItems.map((item) => ({ ticketTypeId: item.ticketTypeId, quantity: item.quantity }))
+                    : [{ ticketTypeId: released.ticketTypeId, quantity: released.quantity }],
+                released.quantity
+            )
+        }
     }
 }
 
 async function createOrder(req, res) {
     const eventId = req.body?.eventId
-    const quantity = Number(req.body?.quantity)
+    const rawTicketItems = req.body?.ticketItems
+    const legacyQuantity = Number(req.body?.quantity)
+    const legacyTicketTypeId = req.body?.ticketTypeId
+    const sessionDate = typeof req.body?.sessionDate === 'string' ? req.body.sessionDate : ''
+    const selectedSeats = Array.isArray(req.body?.selectedSeats) ? req.body.selectedSeats.map((seat) => String(seat).trim().toUpperCase()) : []
     if (!mongoose.isValidObjectId(eventId)) return res.status(400).json({ success: false, message: 'Invalid event ID' })
-    if (!Number.isInteger(quantity) || quantity < 1 || quantity > 10) return res.status(400).json({ success: false, message: 'Ticket quantity must be a whole number from 1 to 10' })
+    if (!Array.isArray(rawTicketItems) && legacyTicketTypeId && !mongoose.isValidObjectId(legacyTicketTypeId)) return res.status(400).json({ success: false, message: 'Invalid ticket type' })
+    if (!Array.isArray(rawTicketItems) && (!Number.isInteger(legacyQuantity) || legacyQuantity < 1 || legacyQuantity > 10)) {
+        return res.status(400).json({ success: false, message: 'Ticket quantity must be a whole number from 1 to 10' })
+    }
 
     try {
         const { keyId, client } = paymentConfig()
         await releaseExpiredReservations()
-        const event = await Event.findOneAndUpdate(
-            { _id: eventId, $expr: { $lte: [{ $add: ['$ticketsSold', quantity] }, '$ticketCapacity'] } },
-            { $inc: { ticketsSold: quantity } }, { new: true }
-        )
-        if (!event) return res.status(409).json({ success: false, message: 'This event is sold out or does not exist' })
+        const eventBeforeReservation = await Event.findById(eventId).select('ticketTypes')
+        if (!eventBeforeReservation) return res.status(404).json({ success: false, message: 'Event not found' })
+        const hasTicketTypes = eventBeforeReservation.ticketTypes?.length > 0
+        let requestedItems = Array.isArray(rawTicketItems)
+            ? rawTicketItems.map((item) => ({
+                ticketTypeId: item?.ticketTypeId ? String(item.ticketTypeId) : '',
+                quantity: Number(item?.quantity),
+            }))
+            : [{ ticketTypeId: legacyTicketTypeId ? String(legacyTicketTypeId) : '', quantity: legacyQuantity }]
+        const uniqueTicketTypes = new Set(requestedItems.map((item) => item.ticketTypeId))
+        const quantity = requestedItems.reduce((total, item) => total + item.quantity, 0)
+        if (!requestedItems.length || requestedItems.length > 10 ||
+            requestedItems.some((item) => !Number.isInteger(item.quantity) || item.quantity < 1 ||
+                (item.ticketTypeId && !mongoose.isValidObjectId(item.ticketTypeId))) ||
+            uniqueTicketTypes.size !== requestedItems.length || !Number.isInteger(quantity) || quantity > 10) {
+            return res.status(400).json({ success: false, message: 'Choose up to 10 tickets across distinct ticket types' })
+        }
+        if (hasTicketTypes && requestedItems.some((item) => !item.ticketTypeId)) {
+            return res.status(400).json({ success: false, message: 'Choose a ticket type for every ticket selection' })
+        }
+        if (!hasTicketTypes && requestedItems.some((item) => item.ticketTypeId)) {
+            return res.status(400).json({ success: false, message: 'This event does not use ticket types' })
+        }
+
+        const statusFilter = { $or: [{ status: 'published' }, { status: { $exists: false } }] }
+        let event
+        let inventoryReserved = false
+        if (hasTicketTypes) {
+            const inventoryRequests = requestedItems.map((item) => ({
+                ticketTypeId: new mongoose.Types.ObjectId(item.ticketTypeId),
+                quantity: item.quantity,
+            }))
+            const availableSelections = {
+                $expr: {
+                    $allElementsTrue: [{
+                        $map: {
+                            input: { $literal: inventoryRequests },
+                            as: 'requested',
+                            in: {
+                                $gt: [{
+                                    $size: {
+                                        $filter: {
+                                            input: '$ticketTypes',
+                                            as: 'tier',
+                                            cond: {
+                                                $and: [
+                                                    { $eq: ['$$tier._id', '$$requested.ticketTypeId'] },
+                                                    { $lte: [{ $add: [{ $ifNull: ['$$tier.sold', 0] }, '$$requested.quantity'] }, '$$tier.quantity'] },
+                                                ],
+                                            },
+                                        },
+                                    },
+                                }, 0],
+                            },
+                        },
+                    }],
+                },
+            }
+            event = await Event.findOneAndUpdate(
+                { _id: eventId, ...statusFilter, ...availableSelections },
+                [{
+                    $set: {
+                        ticketTypes: {
+                            $map: {
+                                input: '$ticketTypes',
+                                as: 'tier',
+                                in: {
+                                    $mergeObjects: [
+                                        '$$tier',
+                                        {
+                                            sold: {
+                                                $add: [
+                                                    { $ifNull: ['$$tier.sold', 0] },
+                                                    {
+                                                        $sum: {
+                                                            $map: {
+                                                                input: {
+                                                                    $filter: {
+                                                                        input: { $literal: inventoryRequests },
+                                                                        as: 'requested',
+                                                                        cond: { $eq: ['$$requested.ticketTypeId', '$$tier._id'] },
+                                                                    },
+                                                                },
+                                                                as: 'requested',
+                                                                in: '$$requested.quantity',
+                                                            },
+                                                        },
+                                                    },
+                                                ],
+                                            },
+                                        },
+                                    ],
+                                },
+                            },
+                        },
+                        ticketsSold: { $add: [{ $ifNull: ['$ticketsSold', 0] }, quantity] },
+                    },
+                }],
+                { new: true, updatePipeline: true }
+            )
+        } else {
+            event = await Event.findOneAndUpdate(
+                { _id: eventId, ...statusFilter, $expr: { $lte: [{ $add: [{ $ifNull: ['$ticketsSold', 0] }, quantity] }, '$ticketCapacity'] } },
+                { $inc: { ticketsSold: quantity } }, { new: true }
+            )
+        }
+        if (!event) return res.status(409).json({ success: false, message: 'Tickets are sold out or the event is unavailable' })
+        inventoryReserved = true
+        const reservationItems = requestedItems
+        const releaseReservation = async () => {
+            if (!inventoryReserved) return
+            await releaseReservedInventory(eventId, reservationItems, quantity)
+            inventoryReserved = false
+        }
+        const availableDates = event.sessions?.length ? event.sessions.map((session) => session.date) : [event.date]
+        if (!availableDates.includes(sessionDate || event.date)) {
+            await releaseReservation()
+            return res.status(400).json({ success: false, message: 'Select a valid event date' })
+        }
+        if (event.seatingEnabled) {
+            if (selectedSeats.length !== quantity || new Set(selectedSeats).size !== selectedSeats.length) {
+                await releaseReservation()
+                return res.status(400).json({ success: false, message: 'Select one unique seat for every ticket' })
+            }
+            const reserved = await Booking.exists({
+                event: event._id,
+                sessionDate: sessionDate || event.date,
+                selectedSeats: { $in: selectedSeats },
+                $or: [{ status: 'paid' }, { status: 'pending', reservationExpiresAt: { $gt: new Date() } }],
+            })
+            if (reserved) {
+                await releaseReservation()
+                return res.status(409).json({ success: false, message: 'One or more selected seats are no longer available' })
+            }
+        } else if (selectedSeats.length) {
+            await releaseReservation()
+            return res.status(400).json({ success: false, message: 'This event has general admission seating' })
+        }
 
         const expiresAt = new Date(Date.now() + RESERVATION_MINUTES * 60 * 1000)
         let booking
         try {
-            booking = await Booking.create({ user: req.auth.sub, event: event._id, quantity, unitPrice: event.price, totalPrice: event.price * quantity, reservationExpiresAt: expiresAt })
+            const ticketItems = requestedItems.map((item) => {
+                const ticketType = item.ticketTypeId &&
+                    event.ticketTypes.find((type) => String(type._id) === item.ticketTypeId)
+                if (item.ticketTypeId && !ticketType) throw new Error('Selected ticket type is no longer available')
+                return {
+                    ...(ticketType ? { ticketTypeId: ticketType._id } : {}),
+                    ticketTypeName: ticketType?.name || 'General admission',
+                    quantity: item.quantity,
+                    unitPrice: ticketType?.price ?? event.price,
+                }
+            })
+            const totalPrice = ticketItems.reduce((total, item) => total + item.quantity * item.unitPrice, 0)
+            booking = await Booking.create({
+                user: req.auth.sub,
+                event: event._id,
+                quantity,
+                unitPrice: totalPrice / quantity,
+                totalPrice,
+                ...(ticketItems.length === 1 && ticketItems[0].ticketTypeId
+                    ? { ticketTypeId: ticketItems[0].ticketTypeId }
+                    : {}),
+                ticketTypeName: ticketItems.length === 1
+                    ? ticketItems[0].ticketTypeName
+                    : ticketItems.map((item) => `${item.ticketTypeName} × ${item.quantity}`).join(', '),
+                ticketItems,
+                sessionDate: sessionDate || event.date,
+                selectedSeats,
+                reservationExpiresAt: expiresAt,
+            })
             const order = await client.orders.create({
                 amount: Math.round(booking.totalPrice * 100), currency: 'INR', receipt: `booking_${booking._id}`, notes: { bookingId: String(booking._id), eventId: String(event._id), userId: req.auth.sub },
             })
             booking.razorpayOrderId = order.id
             await booking.save()
+            inventoryReserved = false
             return res.status(201).json({ success: true, data: { bookingId: booking._id, orderId: order.id, amount: order.amount, currency: order.currency, keyId, expiresAt } })
         } catch (error) {
             if (booking) await Booking.deleteOne({ _id: booking._id })
-            await Event.updateOne({ _id: eventId }, { $inc: { ticketsSold: -quantity } })
+            await releaseReservation()
             throw error
         }
     } catch (error) {
         console.error('Failed to create payment order:', error.message)
         return res.status(503).json({ success: false, message: 'Unable to start payment. Please try again.' })
     }
+}
+
+async function releaseReservedInventory(eventId, ticketItems, totalQuantity) {
+    const typedItems = ticketItems.filter((item) => item.ticketTypeId)
+    if (!typedItems.length) {
+        await Event.updateOne({ _id: eventId }, { $inc: { ticketsSold: -totalQuantity } })
+        return
+    }
+    const inventoryRequests = typedItems.map((item) => ({
+        ticketTypeId: new mongoose.Types.ObjectId(item.ticketTypeId),
+        quantity: -item.quantity,
+    }))
+    await Event.updateOne(
+        { _id: eventId },
+        [{
+            $set: {
+                ticketTypes: {
+                    $map: {
+                        input: '$ticketTypes',
+                        as: 'tier',
+                        in: {
+                            $mergeObjects: [
+                                '$$tier',
+                                {
+                                    sold: {
+                                        $add: [
+                                            { $ifNull: ['$$tier.sold', 0] },
+                                            {
+                                                $sum: {
+                                                    $map: {
+                                                        input: {
+                                                            $filter: {
+                                                                input: { $literal: inventoryRequests },
+                                                                as: 'requested',
+                                                                cond: { $eq: ['$$requested.ticketTypeId', '$$tier._id'] },
+                                                            },
+                                                        },
+                                                        as: 'requested',
+                                                        in: '$$requested.quantity',
+                                                    },
+                                                },
+                                            },
+                                        ],
+                                    },
+                                },
+                            ],
+                        },
+                    },
+                },
+                ticketsSold: { $add: [{ $ifNull: ['$ticketsSold', 0] }, -totalQuantity] },
+            },
+        }],
+        { updatePipeline: true }
+    )
 }
 
 async function markPaymentPaid({ orderId, paymentId, signature }) {

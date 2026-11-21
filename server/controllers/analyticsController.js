@@ -5,7 +5,13 @@ async function getAdminAnalytics(req, res) {
     try {
         const [eventSummary, bookingSummary, topEvents, dailyRevenue] = await Promise.all([
             Event.aggregate([
-                { $group: { _id: null, totalEvents: { $sum: 1 }, ticketCapacity: { $sum: '$ticketCapacity' }, ticketsSold: { $sum: '$ticketsSold' } } },
+                { $group: {
+                    _id: null,
+                    totalEvents: { $sum: 1 },
+                    liveEvents: { $sum: { $cond: [{ $eq: [{ $ifNull: ['$status', 'published'] }, 'published'] }, 1, 0] } },
+                    ticketCapacity: { $sum: '$ticketCapacity' },
+                    ticketsSold: { $sum: '$ticketsSold' },
+                } },
             ]),
             Booking.aggregate([
                 { $group: {

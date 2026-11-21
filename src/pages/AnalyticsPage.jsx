@@ -42,7 +42,7 @@ function AnalyticsPage() {
         ['Revenue', formatMoney(overview.revenue), 'From paid bookings'],
         ['Paid tickets', formatNumber(overview.paidTickets), `${formatNumber(overview.paidBookings)} paid bookings`],
         ['Sell-through', `${overview.sellThroughRate}%`, `${formatNumber(overview.ticketsSold)} of ${formatNumber(overview.ticketCapacity)} tickets`],
-        ['Live events', formatNumber(overview.totalEvents), `${formatNumber(overview.pendingBookings)} pending bookings`],
+        ['Live events', formatNumber(overview.liveEvents), `${formatNumber(overview.totalEvents)} total events · ${formatNumber(overview.pendingBookings)} pending bookings`],
     ] : []
 
     return (

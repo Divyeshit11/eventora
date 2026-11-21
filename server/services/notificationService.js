@@ -9,7 +9,7 @@ async function claimBookingDelivery(bookingId, type) {
     return Booking.findOneAndUpdate(
         { _id: bookingId, status: 'paid', [sentField]: { $exists: false }, $or: [{ [progressField]: { $exists: false } }, { [progressField]: { $lt: new Date(Date.now() - CLAIM_TIMEOUT_MS) } }] },
         { $set: { [progressField]: new Date() } }, { new: true }
-    ).populate('user', 'email').populate('event', 'title location date')
+    ).populate('user', 'email').populate('event', 'title location venueAddress venueContact date')
 }
 
 async function deliver(bookingId, type) {

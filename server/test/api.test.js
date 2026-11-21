@@ -43,6 +43,21 @@ test('authentication, event API CRUD, pagination, and CSV workflows', async () =
             ) || null
         },
     })
+    User.find = (query = {}) => {
+        let selectedFields
+        return {
+        select(fields) {
+            selectedFields = fields.split(/\s+/).filter(Boolean)
+            return this
+        },
+        sort() { return this },
+        lean: async () => [...users.values()]
+            .filter((user) => !query.role || user.role === query.role)
+            .map((user) => selectedFields
+                ? Object.fromEntries(['_id', ...selectedFields].map((field) => [field, user[field]]))
+                : { ...user }),
+        }
+    }
     User.updateOne = async (query, update) => {
         const user = [...users.values()].find((candidate) =>
             candidate._id === query._id &&
@@ -53,6 +68,17 @@ test('authentication, event API CRUD, pagination, and CSV workflows', async () =
         return { matchedCount: 1 }
     }
     User.findOneAndUpdate = async (query, update) => {
+        if (!query.passwordResetTokenHash) {
+            const user = [...users.values()].find((candidate) =>
+                candidate._id === query._id && candidate.role !== 'admin'
+            )
+            if (!user) return null
+            Object.assign(user, update.$set)
+            for (const [field, amount] of Object.entries(update.$inc || {})) {
+                user[field] = (user[field] || 0) + amount
+            }
+            return user
+        }
         const user = [...users.values()].find((candidate) =>
             candidate._id === query._id &&
             candidate.passwordResetTokenHash === query.passwordResetTokenHash &&
@@ -78,14 +104,27 @@ test('authentication, event API CRUD, pagination, and CSV workflows', async () =
         return user
     }
 
-    Event.find = () => ({
+    function matchesEvent(record, filter = {}) {
+        return Object.entries(filter).every(([key, value]) => {
+            if (key === '$and') return value.every((condition) => matchesEvent(record, condition))
+            if (key === '$or') return value.some((condition) => matchesEvent(record, condition))
+            if (key === 'organizer') return String(record.organizer) === String(value)
+            if (key === 'status') return typeof value === 'object' ? value.$exists === false ? record.status === undefined : true : record.status === value
+            if (key === 'category') return record.category === value
+            if (key === 'price' && typeof value === 'object') return record.price <= value.$lte
+            if (key === 'title' || key === 'location' || key === 'description') return value.test(record[key] || '')
+            return true
+        })
+    }
+    Event.find = (filter = {}) => ({
+        populate() { return this },
         select() { return this },
         sort() { return this },
         skip() { return this },
         limit() { return this },
-        lean: async () => records.map((record) => ({ ...record })),
+        lean: async () => records.filter((record) => matchesEvent(record, filter)).map((record) => ({ ...record })),
     })
-    Event.countDocuments = async () => records.length
+    Event.countDocuments = async (filter = {}) => records.filter((record) => matchesEvent(record, filter)).length
     Event.findById = async (id) =>
         records.find((record) => record._id === id) || null
     Event.findOne = async (query) => records.find((record) =>
@@ -95,7 +134,15 @@ test('authentication, event API CRUD, pagination, and CSV workflows', async () =
         Number(record.price) === query.price
     ) || null
     Event.create = async (data) => {
-        const record = { _id: makeId(), ...data }
+        const record = {
+            _id: makeId(),
+            ...data,
+            ticketTypes: data.ticketTypes?.map((type) => ({
+                _id: type._id || makeId(),
+                sold: 0,
+                ...type,
+            })),
+        }
         records.unshift(record)
         return record
     }
@@ -107,6 +154,12 @@ test('authentication, event API CRUD, pagination, and CSV workflows', async () =
     }
     Event.findByIdAndDelete = async (id) => {
         const index = records.findIndex((record) => record._id === id)
+        return index < 0 ? null : records.splice(index, 1)[0]
+    }
+    Event.findOneAndDelete = async (filter) => {
+        const index = records.findIndex((record) =>
+            record._id === filter._id && (record.ticketsSold === 0 || record.ticketsSold === undefined)
+        )
         return index < 0 ? null : records.splice(index, 1)[0]
     }
     Event.insertMany = async (items) => {
@@ -306,6 +359,98 @@ test('authentication, event API CRUD, pagination, and CSV workflows', async () =
         })
         assert.equal(response.status, 403)
 
+        response = await fetch(`${baseUrl}/admin/users/${resetUser._id}/role`, {
+            method: 'PATCH',
+            headers: adminHeaders,
+            body: JSON.stringify({ role: 'organizer' }),
+        })
+        assert.equal(response.status, 200)
+        assert.equal((await response.json()).data.role, 'organizer')
+        response = await fetch(`${baseUrl}/admin/users?role=organizer`, { headers: adminHeaders })
+        assert.equal(response.status, 200)
+        const organizerList = (await response.json()).data
+        assert.equal(organizerList.some((user) => user._id === resetUser._id || user.id === resetUser._id), true)
+        assert.equal(Object.hasOwn(organizerList[0], 'passwordHash'), false)
+
+        response = await fetch(`${baseUrl}/events`, {
+            method: 'POST',
+            headers: { Authorization: 'Bearer ' + renewedUserToken },
+            body: JSON.stringify({ title: 'Blocked after role change' }),
+        })
+        assert.equal(response.status, 401)
+
+        response = await fetch(`${baseUrl}/auth/login`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email: 'regular@example.test', password: 'new-regular-password-123' }),
+        })
+        assert.equal(response.status, 200)
+        const organizerToken = (await response.json()).data.token
+        const organizerHeaders = {
+            'Content-Type': 'application/json',
+            Authorization: 'Bearer ' + organizerToken,
+        }
+        response = await fetch(`${baseUrl}/events`, {
+            method: 'POST',
+            headers: organizerHeaders,
+            body: JSON.stringify({
+                title: 'Organizer event',
+                category: 'Music',
+                location: 'Local',
+                venueAddress: '1 Main Street',
+                venueContact: 'venue@example.test',
+                date: '2026-12-01',
+                ticketTypes: [
+                    { name: 'General', price: 99, quantity: 20 },
+                    { name: 'VIP', price: 199, quantity: 5 },
+                ],
+            }),
+        })
+        assert.equal(response.status, 201)
+        const organizerEvent = (await response.json()).data
+        assert.equal(organizerEvent.status, 'pending_approval')
+        assert.equal(organizerEvent.ticketCapacity, 25)
+        assert.equal(organizerEvent.price, 99)
+        assert.equal(organizerEvent.organizer, resetUser._id)
+
+        response = await fetch(`${baseUrl}/events?page=1&limit=100`, { headers: organizerHeaders })
+        const publishedEvents = (await response.json()).data
+        assert.equal(publishedEvents.some((event) => event._id === organizerEvent._id), false)
+        response = await fetch(`${baseUrl}/events/manage?page=1&limit=100`, { headers: organizerHeaders })
+        assert.equal((await response.json()).data.some((event) => event._id === organizerEvent._id), true)
+
+        response = await fetch(`${baseUrl}/events/${organizerEvent._id}/moderation`, {
+            method: 'PATCH',
+            headers: organizerHeaders,
+            body: JSON.stringify({ status: 'published' }),
+        })
+        assert.equal(response.status, 403)
+        response = await fetch(`${baseUrl}/events/pending`, { headers: adminHeaders })
+        assert.equal(response.status, 200)
+        assert.equal((await response.json()).data.some((event) => event._id === organizerEvent._id), true)
+        response = await fetch(`${baseUrl}/events/${organizerEvent._id}/moderation`, {
+            method: 'PATCH',
+            headers: adminHeaders,
+            body: JSON.stringify({ status: 'rejected' }),
+        })
+        assert.equal(response.status, 400)
+        response = await fetch(`${baseUrl}/events/${organizerEvent._id}/moderation`, {
+            method: 'PATCH',
+            headers: adminHeaders,
+            body: JSON.stringify({ status: 'published' }),
+        })
+        assert.equal(response.status, 200)
+        response = await fetch(`${baseUrl}/events?page=1&limit=100`, { headers: organizerHeaders })
+        assert.equal((await response.json()).data.some((event) => event._id === organizerEvent._id), true)
+
+        response = await fetch(`${baseUrl}/events/${organizerEvent._id}`, {
+            method: 'PUT',
+            headers: organizerHeaders,
+            body: JSON.stringify({ description: 'Updated and resubmitted' }),
+        })
+        assert.equal(response.status, 200)
+        assert.equal((await response.json()).data.status, 'pending_approval')
+
         for (const path of ['/events', '/events/']) {
             response = await fetch(
                 `${baseUrl}${path}?page=1&limit=5&search=meetup&category=Music&maxPrice=200&sort=price-low`,
@@ -331,12 +476,19 @@ test('authentication, event API CRUD, pagination, and CSV workflows', async () =
                 title: 'API Smoke',
                 category: 'Music',
                 location: 'Local',
+                venueAddress: '1 Main Street',
                 date: '2026-11-15',
                 price: 99,
             }),
         })
         assert.equal(response.status, 201)
         const created = (await response.json()).data
+        response = await fetch(`${baseUrl}/events/${created._id}`, {
+            method: 'PUT',
+            headers: organizerHeaders,
+            body: JSON.stringify({ description: 'Not owned' }),
+        })
+        assert.equal(response.status, 403)
 
         response = await fetch(`${baseUrl}/events/${created._id}`, {
             headers: adminHeaders,
@@ -351,13 +503,14 @@ test('authentication, event API CRUD, pagination, and CSV workflows', async () =
                 title: 'API Smoke',
                 category: 'Music',
                 location: 'Local',
+                venueAddress: '1 Main Street',
                 date: '2026-11-15',
                 price: 99,
             }),
         })
         assert.equal(response.status, 409)
         assert.match((await response.json()).message, /already exists/i)
-        assert.equal(records.length, 1)
+        assert.equal(records.length, 2)
 
         response = await fetch(`${baseUrl}/events/${created._id}`, {
             method: 'PUT',
