@@ -257,8 +257,8 @@ function HomePage() {
                 {/* CTA */}
                 <section className="mx-auto max-w-7xl px-4 py-20 sm:px-6 sm:py-28">
                     <Reveal>
-                        <div className="gradient-border relative overflow-hidden rounded-[2.5rem] bg-grid">
-                            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,_rgba(99,102,241,0.25),_transparent_60%)]" />
+                        <div className="gradient-border relative overflow-hidden rounded-[2.5rem] bg-surface-card bg-grid">
+                            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top_left,_rgba(36,116,86,0.24),_transparent_58%),radial-gradient(ellipse_at_bottom_right,_rgba(191,120,94,0.16),_transparent_52%)]" />
                             <div className="relative grid items-center gap-10 px-8 py-14 sm:px-14 lg:grid-cols-[1.2fr_0.8fr]">
                                 <div className="text-center lg:text-left">
                                     <span className="inline-flex items-center gap-2 rounded-full border border-accent-400/30 bg-accent-500/10 px-4 py-1.5 text-xs font-semibold uppercase tracking-[0.18em] text-accent-300">
@@ -274,21 +274,21 @@ function HomePage() {
                                     </p>
                                     <Link
                                         to="/register"
-                                        className="mt-8 inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-brand-600 to-brand-500 px-8 py-4 font-semibold text-white shadow-xl shadow-brand-600/30 transition hover:shadow-brand-500/50 hover:brightness-110"
+                                        className="mt-8 inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-accent-500 to-accent-400 px-8 py-4 font-semibold text-surface shadow-xl shadow-accent-600/20 transition hover:-translate-y-0.5 hover:brightness-110"
                                     >
                                         Get started free
                                         <ArrowRightIcon className="h-5 w-5" />
                                     </Link>
                                 </div>
                                 <div className="relative mx-auto hidden w-full max-w-sm lg:block">
-                                    <div className="absolute -inset-4 animate-pulse-soft rounded-[2rem] bg-accent-500/15 blur-2xl" />
+                                    <div className="absolute -inset-4 animate-pulse-soft rounded-[2rem] bg-gradient-to-br from-brand-500/20 to-accent-500/20 blur-2xl" />
                                     <img
                                         src={heroImage}
                                         alt="Eventora community"
-                                        className="relative h-64 w-full rounded-[1.75rem] border border-surface-border object-cover"
+                                        className="relative h-64 w-full rounded-[1.75rem] border border-brand-300/20 bg-surface/40 object-cover"
                                     />
                                     <div className="glass absolute -bottom-5 left-1/2 flex -translate-x-1/2 items-center gap-2 whitespace-nowrap rounded-2xl px-5 py-3 shadow-xl">
-                                        <ShieldIcon className="h-4 w-4 text-emerald-400" />
+                                        <ShieldIcon className="h-4 w-4 text-brand-300" />
                                         <span className="text-sm font-semibold">Free to join</span>
                                     </div>
                                 </div>
