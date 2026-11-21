@@ -114,6 +114,10 @@ function EventDetailPage() {
             return
         }
         if (event.seatingEnabled && selectedSeats.length !== totalQuantity) { setBooking({ status: 'failed', message: `Select ${totalQuantity} seat${totalQuantity === 1 ? '' : 's'} before continuing.` }); return }
+        if (event.seatingEnabled && seats.status !== 'succeeded') {
+            setBooking({ status: 'failed', message: seats.status === 'failed' ? 'Seat availability could not be loaded. Please refresh and try again.' : 'Seat availability is still loading. Please wait and try again.' })
+            return
+        }
         const cartTicketItems = selectedTicketItems.map((item) => ({
             ticketTypeId: item._id || '',
             ticketTypeName: item.name,
@@ -280,19 +284,20 @@ function EventDetailPage() {
                                         const selectedQuantity = ticketQuantities[key] ?? (index === 0 ? Math.min(1, remaining) : 0)
                                         const maxQuantity = Math.min(remaining, 10 - totalQuantity + selectedQuantity)
                                         return (
-                                            <div key={key} className="card-surface flex items-center justify-between gap-3 rounded-xl p-4">
-                                                <div>
-                                                    <p className="font-semibold">{type.name}</p>
+                                            <div key={key} className="card-surface grid gap-3 rounded-xl p-4 sm:flex sm:items-center sm:justify-between">
+                                                <div className="min-w-0">
+                                                    <p className="text-xs font-semibold uppercase tracking-wider text-brand-200">Ticket category</p>
+                                                    <p className="mt-1 truncate font-semibold text-white">{type.name}</p>
                                                     <p className="mt-1 text-sm text-slate-400">₹{type.price} · {remaining} left</p>
                                                 </div>
-                                                <label className="text-sm text-slate-300">
-                                                    Qty
+                                                <label className="flex items-center justify-between gap-3 text-sm font-medium text-slate-200 sm:justify-start">
+                                                    <span>Quantity</span>
                                                     <select
                                                         aria-label={`${type.name} quantity`}
                                                         value={selectedQuantity}
                                                         disabled={remaining === 0}
                                                         onChange={(change) => setTicketQuantity(type, index, change.target.value)}
-                                                        className="ml-2 rounded-lg border border-surface-border bg-surface px-3 py-2 text-white disabled:opacity-50"
+                                                        className="min-h-11 rounded-lg border border-surface-border bg-surface px-3 py-2 text-white disabled:opacity-50"
                                                     >
                                                         {Array.from({ length: maxQuantity + 1 }, (_, value) => (
                                                             <option key={value} value={value}>{value}</option>
@@ -303,40 +308,43 @@ function EventDetailPage() {
                                         )
                                     })}
                                 </div>
-                                {sessions.length > 1 && <label className="mt-4 inline-block text-sm text-slate-300">Date<select value={activeSessionDate} onChange={(change) => { setSessionDate(change.target.value); setSelectedSeats([]) }} className="ml-2 rounded-lg border border-surface-border bg-surface px-3 py-3 text-white">{sessions.map((session) => <option key={session.date} value={session.date}>{session.label || session.date}</option>)}</select></label>}
-                                <div className="mt-4 flex flex-wrap items-center gap-3">
-                                    <p className="mr-auto text-sm text-slate-300">
+                                {sessions.length > 1 && <label className="mt-5 grid gap-2 text-sm font-medium text-slate-200">Choose date<select value={activeSessionDate} onChange={(change) => { setSessionDate(change.target.value); setSelectedSeats([]) }} className="min-h-11 w-full rounded-lg border border-surface-border bg-surface px-3 py-3 text-white">{sessions.map((session) => <option key={session.date} value={session.date}>{session.label || session.date}</option>)}</select></label>}
+                                <div className="mt-5 grid gap-3 border-t border-white/[0.08] pt-4 sm:flex sm:flex-wrap sm:items-center">
+                                    <p className="text-sm text-slate-300 sm:mr-auto">
                                         {totalQuantity} selected · Total ₹{totalPrice}
                                     </p>
                                     <button
                                         type="button"
                                         onClick={handleAddToCart}
                                         disabled={totalQuantity === 0}
-                                        className="rounded-xl bg-gradient-to-r from-brand-600 to-brand-500 px-5 py-3 font-semibold text-white shadow-lg shadow-brand-600/30 transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
+                                        className="min-h-12 w-full rounded-xl bg-gradient-to-r from-brand-600 to-brand-500 px-5 py-3 font-semibold text-white shadow-lg shadow-brand-600/30 transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
                                     >
                                         Add selected tickets to Cart
                                     </button>
                                 </div>
                                 {event.seatingEnabled && (
-                                    <section className="mt-6 rounded-xl border border-surface-border p-4" aria-label="Seat selection">
+                                    <section className="mt-6 overflow-hidden rounded-xl border border-surface-border p-3 sm:p-4" aria-label="Seat selection">
+                                        <div className="flex flex-wrap items-baseline justify-between gap-2">
                                         <p className="text-sm font-semibold">
                                             Select seats ({selectedSeats.length}/{totalQuantity})
                                         </p>
-                                        <div className="mt-4 overflow-x-auto pb-2">
+                                        <p className="text-xs text-slate-400">Swipe sideways for more seats</p>
+                                        </div>
+                                        <div className="mt-4 overflow-x-auto overscroll-x-contain pb-3 [-webkit-overflow-scrolling:touch]">
                                             <div className="w-max min-w-full">
-                                                <div className="mb-5 rounded-lg border border-surface-border bg-surface-card px-4 py-2 text-center text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
+                                                <div className="mb-4 rounded-lg border border-surface-border bg-surface-card px-4 py-2 text-center text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">
                                                     Stage
                                                 </div>
                                                 {Array.from({ length: seats.rows || 0 }, (_, rowIndex) => {
                                                     const row = String.fromCharCode(65 + rowIndex)
                                                     return (
-                                                        <div key={row} className="mb-2 flex items-center gap-2 last:mb-0">
+                                                        <div key={row} className="mb-1.5 flex items-center gap-1.5 last:mb-0">
                                                             <span className="sticky left-0 z-10 w-6 shrink-0 bg-surface py-2 text-center text-xs font-semibold text-slate-400">
                                                                 {row}
                                                             </span>
                                                             <div
-                                                                className="grid gap-1.5"
-                                                                style={{ gridTemplateColumns: `repeat(${seats.seatsPerRow}, 2.25rem)` }}
+                                                                className="grid gap-1 sm:gap-1.5"
+                                                                style={{ gridTemplateColumns: `repeat(${seats.seatsPerRow}, minmax(2rem, 2.25rem))` }}
                                                             >
                                                                 {Array.from({ length: seats.seatsPerRow || 0 }, (_, seatIndex) => {
                                                                     const seat = `${row}${seatIndex + 1}`
@@ -350,7 +358,7 @@ function EventDetailPage() {
                                                                             onClick={() => toggleSeat(seat)}
                                                                             aria-label={`${seat}${reserved ? ', reserved' : selected ? ', selected' : ', available'}`}
                                                                             aria-pressed={selected}
-                                                                            className={`h-9 w-9 rounded-md text-[10px] font-semibold transition-colors ${reserved ? 'cursor-not-allowed bg-slate-800 text-slate-500' : selected ? 'bg-brand-600 text-white' : 'border border-surface-border text-slate-300 hover:border-brand-500 hover:bg-brand-500/10'}`}
+                                                                            className={`h-8 w-8 rounded-md text-[10px] font-semibold transition-colors sm:h-9 sm:w-9 ${reserved ? 'cursor-not-allowed bg-slate-800 text-slate-500' : selected ? 'bg-brand-600 text-white' : 'border border-surface-border text-slate-300 hover:border-brand-500 hover:bg-brand-500/10'}`}
                                                                         >
                                                                             {seat}
                                                                         </button>
