@@ -2,8 +2,8 @@ import axios from 'axios'
 import { TOKEN_KEY, clearStoredSession } from '../features/auth/authSlice'
 
 function getApiBaseUrl() {
-    // In production the API runs as a Netlify Function on this same domain.
-    // VITE_API_URL remains available for a separately hosted API if needed.
+    // In production the API runs as a Vercel Function on this same domain.
+    // VITE_API_URL remains available for local development if needed.
     const defaultApiUrl = import.meta.env.PROD ? '/api' : 'http://localhost:5000/api'
     return (import.meta.env.VITE_API_URL || defaultApiUrl)
         .replace(/\/+$/, '')

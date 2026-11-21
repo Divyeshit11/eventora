@@ -93,48 +93,19 @@ database:
 - `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASSWORD`, and
   `SMTP_FROM` — credentials and sender for the SMTP service used by password
   reset emails. Keep SMTP credentials server-side.
+- `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`, and `RAZORPAY_WEBHOOK_SECRET` —
+  payment credentials. Keep the secret and webhook secret server-side; do not
+  prefix any of them with `VITE_`.
 - `TRUST_PROXY=true` and `TRUST_PROXY_HOPS=1`.
 
 Vercel provides `NODE_ENV=production`; do not set `VITE_API_URL` for this
 same-origin deployment. After deployment, verify
-`https://<your-domain>/api/health`, sign in, and test a read-only event request.
+`https://<your-domain>/api/health`, sign in, and complete a test-mode ticket
+purchase on a phone and a desktop browser. Add the Vercel production domain in
+the Razorpay Dashboard before accepting live payments.
 Atlas must allow Vercel network access and have sufficient available storage;
 the current Atlas storage quota block must be resolved before any event writes
 or CSV imports can succeed.
-
-- Deploy the `server` directory before deploying the frontend. A Render Blueprint
-
-- Deploy the `server` directory before deploying the frontend. A Render Blueprint
-  is included in [render.yaml](./render.yaml): in Render, choose **New +** →
-  **Blueprint**, select this repository, and enter the required values for
-  `MONGODB_URI`, `MONGODB_DB` (defaults to `eventora`), `CLIENT_URL`,
-  `ADMIN_EMAIL`, and `ADMIN_PASSWORD`. Set
-  `CLIENT_URL` to the exact Netlify URL, for example
-  `https://your-site.netlify.app`. After it deploys, open
-  `https://<your-render-service>.onrender.com/api/health`; it must return JSON
-  before proceeding. Add the SMTP host, credentials, and sender address to the
-  Render environment before enabling password reset emails.
-- Netlify is configured by [netlify.toml](./netlify.toml) to build with
-  `npm run build` and publish `dist`. Connect the repository at its project
-  root, then trigger a fresh deployment (clear the build cache if an older
-  deployment published the wrong files).
-- Configure `VITE_API_URL` in Netlify's frontend environment variables to the
-  deployed Render API URL ending in `/api`, for example
-  `https://<your-render-service>.onrender.com/api`; do not use a localhost URL
-  for a deployed site. Save it, then trigger a new Netlify deployment so Vite
-  embeds the value in the production bundle. Backend secrets and `MONGODB_URI` belong only in the API
-  host's environment variables, never in the frontend.
-- The included `public/_redirects` routes Netlify page requests to the React
-  entry point so event detail URLs can be refreshed directly.
-- Configure the backend host with `PORT`, `MONGODB_URI` (MongoDB Atlas),
-  `MONGODB_DB=eventora`, and
-  `CLIENT_URL` (the deployed frontend origin), `JWT_SECRET`, `ADMIN_EMAIL`, and
-  `ADMIN_PASSWORD`, plus the SMTP settings described above. Set `TRUST_PROXY=true` only if the host sits behind its
-  documented trusted reverse proxy and set `TRUST_PROXY_HOPS` to the verified
-  proxy hop count (1–5). Production `CLIENT_URL` entries must be HTTPS origins.
-  Ensure the MongoDB `events` collection has a descending `createdAt` index for
-  paginated event browsing (`db.events.createIndex({ createdAt: -1 })`).
-  Restrict Atlas network access to the backend host and use a least-privilege
   database user.
 - Deployment is not automatic. Configure the hosting dashboards and verify the
   live integration before considering the application production-ready.

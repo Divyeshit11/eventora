@@ -39,3 +39,10 @@ services:
         value: "true"
       - key: TRUST_PROXY_HOPS
         value: "1"
+      # Required to create Razorpay Checkout orders. Keep these server-side.
+      - key: RAZORPAY_KEY_ID
+        sync: false
+      - key: RAZORPAY_KEY_SECRET
+        sync: false
+      - key: RAZORPAY_WEBHOOK_SECRET
+        sync: false

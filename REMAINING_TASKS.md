@@ -37,7 +37,7 @@ checks above.
    network access, and backup policy.
 2. Choose and configure an API hosting provider; add production environment
    variables and a verified proxy-hop setting if applicable.
-3. Configure Netlify with the deployed API base URL and production build.
+3. Configure the Vercel project with production secrets and deploy from the repository root.
 4. Set a unique production JWT secret and provision an administrator password
    through the host's secret manager. Do not copy local/test credentials.
 5. Configure the exact HTTPS frontend origin in backend `CLIENT_URL`, test
@@ -66,6 +66,6 @@ checks above.
   tests.
 - [src/services/](./src/services/) and [src/features/](./src/features/) —
   frontend/API integration and state.
-- [public/_headers](./public/_headers) and [public/_redirects](./public/_redirects)
-  — Netlify security headers and SPA routing.
+- [vercel.json](./vercel.json) — Vercel API/SPA routing, scheduled reminders,
+  and security headers.
 - [Deployment readiness](./DEPLOYMENT_READINESS.md) — explicit release gates.
