@@ -335,8 +335,18 @@ async function razorpayWebhook(req, res) {
     const signature = req.get('x-razorpay-signature') || ''
     const expected = crypto.createHmac('sha256', webhookSecret).update(req.body).digest('hex')
     if (!signaturesMatch(expected, signature)) return res.status(400).send('Invalid webhook signature')
-    const payment = req.body?.payload?.payment?.entity
-    if (req.body?.event === 'payment.captured' && payment?.order_id && payment?.id) {
+
+    // Express deliberately keeps this route as raw bytes so the HMAC is checked
+    // against exactly what Razorpay sent. Parse only after that verification.
+    let payload
+    try {
+        payload = JSON.parse(Buffer.isBuffer(req.body) ? req.body.toString('utf8') : String(req.body))
+    } catch {
+        return res.status(400).send('Invalid webhook payload')
+    }
+
+    const payment = payload?.payload?.payment?.entity
+    if (payload?.event === 'payment.captured' && payment?.order_id && payment?.id) {
         const booking = await Booking.findOneAndUpdate(
             { razorpayOrderId: payment.order_id, status: 'pending' },
             { $set: { status: 'paid', razorpayPaymentId: payment.id, paymentVerifiedAt: new Date(), ticketCode: `EVT-${crypto.randomUUID().slice(0, 8).toUpperCase()}` } }
