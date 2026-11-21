@@ -50,6 +50,9 @@ test('sends password reset email using the configured SMTP transport', async () 
         assert.equal(sentMessage.to, 'person@example.test')
         assert.match(sentMessage.text, new RegExp(resetUrl.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')))
         assert.match(sentMessage.html, /#token=abc&amp;next=def/)
+        assert.match(sentMessage.html, /src="cid:eventora-logo"/)
+        assert.equal(sentMessage.attachments[0].cid, 'eventora-logo')
+        assert.equal(sentMessage.attachments[0].contentType, 'image/png')
     } finally {
         nodemailer.createTransport = originalCreateTransport
         delete require.cache[servicePath]
@@ -100,11 +103,21 @@ test('sends booking confirmation with a downloadable PDF ticket attachment', asy
         assert.equal(sentMessage.to, 'person@example.test')
         assert.match(sentMessage.text, /downloadable ticket is attached/i)
         assert.match(sentMessage.text, /General × 1, VIP × 1/)
-        assert.equal(sentMessage.attachments.length, 1)
+        assert.equal(sentMessage.attachments.length, 2)
         assert.equal(sentMessage.attachments[0].filename, 'eventora-ticket-EVT-3CB4A97E.pdf')
         assert.equal(sentMessage.attachments[0].contentType, 'application/pdf')
         assert.equal(sentMessage.attachments[0].contentDisposition, 'attachment')
         assert.equal(sentMessage.attachments[0].content.subarray(0, 5).toString(), '%PDF-')
+        assert.match(sentMessage.html, /src="cid:eventora-logo"/)
+        assert.equal(sentMessage.attachments[1].cid, 'eventora-logo')
+        assert.equal(sentMessage.attachments[1].contentType, 'image/png')
+        assert.equal(sentMessage.attachments[1].contentDisposition, 'inline')
+        assert.equal(
+            require('node:fs').readFileSync(sentMessage.attachments[1].path).subarray(0, 8).toString('hex'),
+            '89504e470d0a1a0a'
+        )
+        const pdfText = sentMessage.attachments[0].content.toString('latin1')
+        assert.ok((pdfText.match(/\/Subtype \/Image/g) || []).length >= 2)
     } finally {
         nodemailer.createTransport = originalCreateTransport
         delete require.cache[servicePath]

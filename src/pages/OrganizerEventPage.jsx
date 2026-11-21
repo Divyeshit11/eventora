@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router'
 import Navbar from '../Components/layout/Navbar'
 import Footer from '../Components/layout/Footer'
+import PageHeader from '../Components/common/PageHeader'
 import { checkInTicket, downloadEventAttendees, getEventAttendees, getEventSales } from '../services/eventService'
 
 function OrganizerEventPage() {
@@ -62,17 +63,21 @@ function OrganizerEventPage() {
             {state.status === 'loading' && <p className="py-16 text-center text-slate-400" role="status">Loading event sales and attendees...</p>}
             {state.error && <p className="mt-5 rounded-xl border border-red-800 p-4 text-red-300" role="alert">{state.error}</p>}
             {state.status === 'succeeded' && <>
-                <h1 className="mt-4 text-3xl font-bold">{state.sales.event.title}</h1>
+                <PageHeader
+                    eyebrow="Organizer workspace"
+                    title={state.sales.event.title}
+                    description="Track event performance, manage attendee entry, and export your guest list."
+                />
                 <section className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                    {[['Revenue', `₹${summary.revenue || 0}`], ['Paid tickets', summary.paidTickets || 0], ['Paid bookings', summary.paidBookings || 0], ['Checked-in bookings', summary.checkedIn || 0]].map(([label, value]) => <article key={label} className="rounded-2xl border border-surface-border bg-surface-card p-5"><p className="text-sm text-slate-400">{label}</p><p className="mt-2 text-2xl font-bold">{value}</p></article>)}
+                    {[['Revenue', `₹${summary.revenue || 0}`], ['Paid tickets', summary.paidTickets || 0], ['Paid bookings', summary.paidBookings || 0], ['Checked-in bookings', summary.checkedIn || 0]].map(([label, value]) => <article key={label} className="card-surface card-hover rounded-2xl p-5"><p className="text-sm text-slate-400">{label}</p><p className="mt-2 font-display text-2xl font-bold">{value}</p></article>)}
                 </section>
-                <section className="mt-8 rounded-2xl border border-surface-border bg-surface-card p-5">
+                <section className="card-surface mt-8 rounded-2xl p-5">
                     <h2 className="text-xl font-semibold">Ticket type sales</h2>
                     <div className="mt-4 space-y-3">{state.sales.ticketTypes.map((type) => <p key={type._id} className="flex justify-between gap-3 text-sm"><span>{type.name} · ₹{type.price}</span><span>{type.sold} / {type.quantity} reserved</span></p>)}</div>
                 </section>
                 <section className="mt-8">
                     <div className="flex flex-wrap items-center justify-between gap-3"><h2 className="text-2xl font-semibold">Attendees ({state.attendees.length})</h2><button type="button" onClick={exportAttendees} className="rounded-xl border border-surface-border bg-surface-card px-4 py-3 text-sm font-semibold hover:bg-slate-800">Export attendees CSV</button></div>
-                    <form onSubmit={submitCheckIn} className="mt-4 flex flex-wrap gap-3 rounded-xl border border-surface-border bg-surface-card p-4">
+                    <form onSubmit={submitCheckIn} className="card-surface mt-4 flex flex-wrap gap-3 rounded-xl p-4">
                         <label className="grid flex-1 gap-2 text-sm text-slate-300">Scan or enter ticket code<input autoFocus value={ticketCode} onChange={(change) => setTicketCode(change.target.value.toUpperCase())} placeholder="EVT-XXXXXXXX" required className="rounded-lg border border-surface-border bg-surface px-3 py-3 text-white" /></label>
                         <button disabled={checkInStatus === 'loading'} className="self-end rounded-xl bg-brand-600 px-5 py-3 font-semibold disabled:opacity-50">{checkInStatus === 'loading' ? 'Checking in...' : 'Check in'}</button>
                         {checkInMessage && <p role={checkInStatus === 'failed' ? 'alert' : 'status'} className="w-full text-sm text-slate-300">{checkInMessage}</p>}

@@ -21,19 +21,19 @@ const categories = [
         icon: MusicIcon,
         title: 'Live music',
         description: 'Find your next favorite show.',
-        accent: 'from-purple-500/25 to-fuchsia-500/10 text-purple-300 ring-purple-400/30',
+        accent: 'from-brand-500/25 to-brand-700/10 text-brand-300 ring-brand-400/30',
     },
     {
         icon: CpuIcon,
         title: 'Technology',
         description: 'Meet ideas shaping what’s next.',
-        accent: 'from-blue-500/25 to-indigo-500/10 text-blue-300 ring-blue-400/30',
+        accent: 'from-accent-500/25 to-accent-600/10 text-accent-300 ring-accent-400/30',
     },
     {
         icon: BriefcaseIcon,
         title: 'Business',
         description: 'Connect with people who inspire you.',
-        accent: 'from-amber-500/25 to-orange-500/10 text-amber-300 ring-amber-400/30',
+        accent: 'from-accent-500/25 to-accent-600/10 text-accent-300 ring-accent-400/30',
     },
 ]
 
@@ -71,26 +71,32 @@ function HomePage() {
                 {/* Hero */}
                 <section className="relative isolate overflow-hidden">
                     <div className="pointer-events-none absolute inset-0 -z-10 bg-grid" />
-                    <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_top_right,_rgba(99,102,241,0.22),_transparent_55%)]" />
+                    <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_top_right,_rgba(36,116,86,0.23),_transparent_55%)]" />
                     <div className="pointer-events-none absolute -left-32 top-40 -z-10 h-96 w-96 animate-float-slow rounded-full bg-accent-500/10 blur-3xl" />
                     <div className="pointer-events-none absolute -right-24 bottom-0 -z-10 h-80 w-80 animate-float rounded-full bg-brand-600/15 blur-3xl" />
+                    <svg className="pointer-events-none absolute right-[8%] top-24 hidden h-72 w-72 animate-spin-slow opacity-20 lg:block" viewBox="0 0 200 200" fill="none" aria-hidden="true">
+                        <circle cx="100" cy="100" r="82" stroke="url(#home-orbit)" strokeDasharray="2 8" />
+                        <circle cx="100" cy="100" r="58" stroke="white" strokeOpacity=".25" />
+                        <path d="M100 8v18m0 148v18M8 100h18m148 0h18" stroke="#91B9A2" strokeWidth="2" />
+                        <defs><linearGradient id="home-orbit" x1="20" y1="20" x2="180" y2="180"><stop stopColor="#247456" /><stop offset="1" stopColor="#D59A82" /></linearGradient></defs>
+                    </svg>
 
                     <div className="mx-auto grid min-h-[640px] max-w-7xl items-center gap-14 px-4 py-20 sm:px-6 lg:grid-cols-[1.05fr_0.95fr] lg:py-28">
                         <div>
                             <Reveal>
-                                <span className="inline-flex items-center gap-2 rounded-full border border-brand-500/30 bg-brand-500/10 px-4 py-2 text-sm font-medium text-brand-100">
-                                    <span className="h-2 w-2 animate-pulse-soft rounded-full bg-accent-400" />
-                                    Good plans start here
+                                <span className="inline-flex items-center gap-2 rounded-full border border-brand-300/15 bg-brand-400/[0.08] px-4 py-2 text-sm font-medium text-brand-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]">
+                                <span className="h-2 w-2 animate-pulse-soft rounded-full bg-accent-300 shadow-[0_0_16px_rgba(213,154,130,0.8)]" />
+                                FIND YOUR NEXT MOMENT
                                 </span>
                             </Reveal>
                             <Reveal delay={100}>
-                                <h1 className="mt-7 max-w-2xl font-display text-4xl font-extrabold leading-[1.08] tracking-tight sm:text-6xl lg:text-7xl">
+                                <h1 className="mt-7 max-w-2xl font-display text-4xl font-extrabold leading-[1.03] tracking-[-0.055em] sm:text-6xl lg:text-7xl">
                                     Make room for
                                     <span className="text-gradient block">something exciting.</span>
                                 </h1>
                             </Reveal>
                             <Reveal delay={200}>
-                                <p className="mt-6 max-w-xl text-lg leading-8 text-slate-400">
+                                <p className="mt-6 max-w-xl text-lg leading-8 text-slate-400 sm:text-xl">
                                     Discover concerts, ideas, and experiences worth sharing.
                                     Find your next event with Eventora.
                                 </p>
@@ -99,7 +105,7 @@ function HomePage() {
                                 <div className="mt-9 flex flex-col gap-3 sm:flex-row">
                                     <Link
                                         to="/register"
-                                        className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-brand-600 to-brand-500 px-7 py-3.5 font-semibold text-white shadow-lg shadow-brand-600/30 transition hover:shadow-brand-500/50 hover:brightness-110"
+                                        className="inline-flex items-center justify-center gap-2 rounded-xl bg-brand-600 px-7 py-3.5 font-semibold text-white shadow-[0_18px_40px_-16px_rgba(13,81,62,0.65)] transition duration-300 hover:-translate-y-0.5 hover:bg-brand-500 hover:shadow-brand-500/50"
                                     >
                                         Create your free account
                                         <ArrowRightIcon className="h-5 w-5" />
@@ -122,17 +128,18 @@ function HomePage() {
                         {/* Hero visual */}
                         <Reveal delay={250} className="relative mx-auto w-full max-w-lg">
                             <div className="absolute -inset-5 animate-pulse-soft rounded-[2.5rem] bg-gradient-to-br from-brand-600/20 to-accent-500/15 blur-2xl" />
-                            <div className="gradient-border relative overflow-hidden rounded-[2rem] shadow-2xl shadow-black/40">
+                            <div className="gradient-border relative overflow-hidden rounded-[2rem] shadow-[0_40px_100px_-40px_rgba(13,81,62,0.45)]">
                                 <img
                                     src={heroImage}
                                     alt="People enjoying a live event together"
-                                    className="h-72 w-full object-cover sm:h-80"
+                                    className="h-80 w-full object-cover transition-transform duration-[1200ms] hover:scale-105 sm:h-[26rem]"
                                 />
-                                <div className="absolute inset-0 bg-gradient-to-t from-surface via-surface/30 to-transparent" />
+                                <div className="absolute inset-0 bg-gradient-to-t from-surface via-surface/15 to-transparent" />
+                                <div className="absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-black/25 to-transparent" />
 
                                 {/* Floating cards */}
                                 <div className="absolute bottom-5 left-5 right-5 flex items-center justify-between gap-3">
-                                    <div className="glass flex items-center gap-3 rounded-2xl px-4 py-3">
+                                    <div className="glass flex items-center gap-3 rounded-2xl border border-white/10 px-4 py-3 shadow-xl">
                                         <span className="grid h-10 w-10 place-items-center rounded-xl bg-gradient-to-br from-brand-500 to-accent-500 text-white">
                                             <CalendarIcon className="h-5 w-5" />
                                         </span>

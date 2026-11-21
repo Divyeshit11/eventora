@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router'
 import Navbar from '../Components/layout/Navbar'
 import Footer from '../Components/layout/Footer'
+import PageHeader from '../Components/common/PageHeader'
 import {
     downloadSalesReport,
     getEvents,
@@ -79,9 +80,11 @@ function AdminOperationsPage() {
 
     return <div className="min-h-screen bg-surface text-white"><Navbar />
         <main className="mx-auto max-w-6xl px-4 py-12 sm:px-6">
-            <p className="text-sm font-semibold uppercase tracking-wider text-brand-500">Administration</p>
-            <h1 className="mt-2 text-3xl font-bold sm:text-4xl">Event and account operations</h1>
-            <p className="mt-3 text-slate-400">Assign organizer access, review submitted events, and export reports.</p>
+            <PageHeader
+                eyebrow="Administration"
+                title={<>Operations <span className="text-gradient">center</span></>}
+                description="Review event submissions, manage organizer access, and export performance reports."
+            />
             <div className="mt-6 flex flex-wrap gap-3">
                 <Link to="/analytics" className="rounded-xl border border-surface-border bg-surface-card px-4 py-3 text-sm font-semibold hover:bg-slate-800">Sales analytics</Link>
                 <Link to="/manage-events" className="rounded-xl border border-surface-border bg-surface-card px-4 py-3 text-sm font-semibold hover:bg-slate-800">All events</Link>
@@ -94,7 +97,7 @@ function AdminOperationsPage() {
                 <section className="mt-10">
                     <h2 className="text-2xl font-semibold">Event approval and moderation ({state.events.length})</h2>
                     {state.events.length === 0 ? <p className="mt-4 rounded-xl border border-surface-border p-5 text-slate-400">No events are waiting for approval.</p> :
-                        <div className="mt-4 space-y-4">{state.events.map((event) => <article key={event._id} className="rounded-2xl border border-surface-border bg-surface-card p-5">
+                        <div className="mt-4 space-y-4">{state.events.map((event) => <article key={event._id} className="card-surface card-hover rounded-2xl p-5">
                             <div className="flex flex-wrap items-start justify-between gap-4"><div><h3 className="text-lg font-semibold">{event.title}</h3><p className="mt-1 text-sm capitalize text-amber-300">{(event.status || 'published').replaceAll('_', ' ')}</p><p className="mt-1 text-sm text-slate-400">{event.location} · {event.date} · Submitted by {event.organizer?.email || 'Administrator / legacy event'}</p><p className="mt-1 text-sm text-slate-400">{event.ticketTypes?.map((type) => `${type.name}: ₹${type.price} (${type.quantity})`).join(' · ') || `₹${event.price} · ${event.ticketCapacity} tickets`}</p></div><Link to={`/events/${event._id}`} className="text-sm text-brand-400 hover:text-brand-300">Review event details</Link></div>
                             <label className="mt-4 grid gap-2 text-sm text-slate-300">Moderation note (required when rejecting)<textarea value={notes[event._id] || ''} onChange={(change) => setNotes((current) => ({ ...current, [event._id]: change.target.value }))} maxLength="1000" rows="2" className="rounded-lg border border-surface-border bg-surface px-3 py-2 text-white" /></label>
                             <div className="mt-4 flex flex-wrap gap-3">{event.status !== 'published' && <button type="button" disabled={Boolean(busyId)} onClick={() => reviewEvent(event, 'published')} className="rounded-lg bg-emerald-700 px-4 py-2 text-sm font-semibold disabled:opacity-50">{event.status === 'pending_approval' ? 'Approve and publish' : 'Publish event'}</button>}{event.status === 'published' && <button type="button" disabled={Boolean(busyId)} onClick={() => reviewEvent(event, 'suspended')} className="rounded-lg border border-amber-700 px-4 py-2 text-sm font-semibold text-amber-300 disabled:opacity-50">Suspend event</button>}{event.status === 'pending_approval' && <button type="button" disabled={Boolean(busyId) || !notes[event._id]?.trim()} onClick={() => reviewEvent(event, 'rejected')} className="rounded-lg border border-red-700 px-4 py-2 text-sm font-semibold text-red-300 disabled:opacity-50">Reject</button>}</div>

@@ -1,8 +1,8 @@
 const badgeVariants = {
-    technology: 'border-blue-400/30 bg-blue-500/15 text-blue-300',
-    music: 'border-purple-400/30 bg-purple-500/15 text-purple-300',
-    business: 'border-amber-400/30 bg-amber-500/15 text-amber-300',
-    comedy: 'border-pink-400/30 bg-pink-500/15 text-pink-300',
+    technology: 'border-brand-400/30 bg-brand-500/15 text-brand-300',
+    music: 'border-brand-400/30 bg-brand-500/15 text-brand-300',
+    business: 'border-accent-400/30 bg-accent-500/15 text-accent-300',
+    comedy: 'border-accent-400/30 bg-accent-500/15 text-accent-300',
     other: 'border-slate-400/30 bg-slate-500/15 text-slate-300',
 }
 

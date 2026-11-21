@@ -4,10 +4,10 @@ import Reveal from '../common/Reveal'
 import { categoryIcon, ArrowRightIcon } from '../common/icons'
 
 const accentClasses = [
-  'from-blue-500/25 to-indigo-500/10 text-blue-300 ring-blue-400/30',
-  'from-purple-500/25 to-fuchsia-500/10 text-purple-300 ring-purple-400/30',
-  'from-amber-500/25 to-orange-500/10 text-amber-300 ring-amber-400/30',
-  'from-pink-500/25 to-rose-500/10 text-pink-300 ring-pink-400/30',
+  'from-brand-500/25 to-brand-700/10 text-brand-300 ring-brand-400/30',
+  'from-accent-500/25 to-accent-600/10 text-accent-300 ring-accent-400/30',
+  'from-accent-500/25 to-accent-600/10 text-accent-300 ring-accent-400/30',
+  'from-brand-500/20 to-accent-500/10 text-brand-200 ring-accent-400/30',
 ]
 
 function CategorySection({ onCategorySelect }) {
@@ -15,7 +15,7 @@ function CategorySection({ onCategorySelect }) {
     <section
     id="categories"
     className="relative mx-auto max-w-7xl px-4 py-16 sm:px-6 sm:py-20">
-      <div className="pointer-events-none absolute inset-x-0 top-1/3 h-72 bg-[radial-gradient(ellipse_at_center,_rgba(99,102,241,0.1),_transparent_65%)]" />
+      <div className="pointer-events-none absolute inset-x-0 top-1/3 h-72 bg-[radial-gradient(ellipse_at_center,_rgba(36,116,86,0.1),_transparent_65%)]" />
       <Reveal className="relative mb-10 text-center">
         <span className="inline-flex items-center gap-2 rounded-full border border-brand-500/30 bg-brand-500/10 px-4 py-1.5 text-xs font-semibold uppercase tracking-[0.18em] text-brand-300">
           Browse by interest

@@ -108,7 +108,7 @@ function AccountPage() {
                                             <ArrowRightIcon className="h-4 w-4 text-slate-500 transition group-hover:translate-x-1 group-hover:text-brand-400" />
                                         </Link>
                                         <Link to="/favorites" className="group flex items-center justify-between rounded-xl border border-surface-border px-4 py-3 text-sm font-semibold text-slate-200 transition hover:border-brand-500/50 hover:bg-surface-raised">
-                                            <span className="inline-flex items-center gap-2"><HeartIcon className="h-4 w-4 text-pink-400" />Favorites</span>
+                                            <span className="inline-flex items-center gap-2"><HeartIcon className="h-4 w-4 text-accent-400" />Favorites</span>
                                             <ArrowRightIcon className="h-4 w-4 text-slate-500 transition group-hover:translate-x-1 group-hover:text-brand-400" />
                                         </Link>
                                     </div>

@@ -23,11 +23,15 @@ const perks = [
 
 function AuthLayout({ title, subtitle, children }) {
     return (
-        <div className="grid min-h-screen bg-surface text-white lg:grid-cols-[1.05fr_0.95fr]">
+        <div className="relative grid min-h-screen overflow-hidden bg-surface text-white lg:grid-cols-[1.05fr_0.95fr]">
             {/* Brand panel */}
-            <aside className="relative hidden overflow-hidden border-r border-surface-border bg-grid lg:flex lg:flex-col lg:justify-between lg:p-12">
-                <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top_left,_rgba(99,102,241,0.22),_transparent_55%)]" />
+            <aside className="relative hidden overflow-hidden border-r border-white/[0.07] bg-grid lg:flex lg:flex-col lg:justify-between lg:p-12 xl:p-16">
+                <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top_left,_rgba(36,116,86,0.24),_transparent_55%)]" />
                 <div className="pointer-events-none absolute -bottom-32 -right-32 h-96 w-96 rounded-full bg-accent-500/15 blur-3xl" />
+                <div className="pointer-events-none absolute right-[-8rem] top-[28%] h-[28rem] w-[28rem] rounded-full border border-white/[0.04]">
+                    <span className="absolute inset-10 rounded-full border border-dashed border-brand-200/[0.08]" />
+                    <span className="absolute left-12 top-16 h-2 w-2 animate-pulse-soft rounded-full bg-accent-300 shadow-[0_0_20px_rgba(213,154,130,0.8)]" />
+                </div>
 
                 <Link to="/" className="relative">
                     <Logo />
@@ -38,7 +42,7 @@ function AuthLayout({ title, subtitle, children }) {
                         <SparklesIcon className="h-3.5 w-3.5" />
                         Your next experience awaits
                     </p>
-                    <h2 className="mt-5 max-w-md font-display text-4xl font-extrabold leading-tight tracking-tight">
+                    <h2 className="mt-5 max-w-md font-display text-4xl font-extrabold leading-[1.08] tracking-[-0.045em] xl:text-5xl">
                         Make room for{' '}
                         <span className="text-gradient">something exciting.</span>
                     </h2>
@@ -51,7 +55,7 @@ function AuthLayout({ title, subtitle, children }) {
                         {perks.map((perk, index) => (
                             <div
                                 key={perk.title}
-                                className="card-surface card-hover flex items-start gap-4 rounded-2xl p-4"
+                                className="card-surface card-hover animate-fade-up flex items-start gap-4 rounded-2xl p-4"
                                 style={{ animationDelay: `${index * 120}ms` }}
                             >
                                 <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-gradient-to-br from-brand-500/30 to-accent-500/20 text-brand-300 ring-1 ring-brand-500/30">
@@ -92,7 +96,7 @@ function AuthLayout({ title, subtitle, children }) {
                         </h1>
                         <p className="mt-3 leading-7 text-slate-400">{subtitle}</p>
                     </div>
-                    <div className="card-surface gradient-border mt-8 rounded-3xl p-6 sm:p-8">
+                    <div className="card-surface gradient-border mt-8 rounded-3xl p-6 shadow-[0_30px_90px_-40px_rgba(13,81,62,0.45)] sm:p-8">
                         {children}
                     </div>
                 </div>
