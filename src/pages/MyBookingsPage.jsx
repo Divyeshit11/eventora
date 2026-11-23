@@ -127,50 +127,22 @@ function MyBookingsPage() {
                                                 </span>
                                                 <span className="inline-flex items-center gap-1.5">
                                                     <CalendarIcon className="h-4 w-4 text-accent-400" />
-                                                    {booking.sessionDate || booking.event?.date}
+                                                    {booking.event?.date}
                                                 </span>
                                             </div>
-                                            {booking.event?.venueAddress && (
-                                                <p className="mt-2 text-sm text-slate-400">
-                                                    {booking.event.venueAddress}
-                                                </p>
-                                            )}
                                             {formatBookingDate(booking.createdAt) && (
                                                 <p className="mt-2 text-sm text-slate-500">
                                                     Booked on {formatBookingDate(booking.createdAt)}
                                                 </p>
                                             )}
-                                            {booking.ticketItems?.length > 1 ? (
-                                                <ul className="mt-3 space-y-1 text-sm text-slate-300">
-                                                    {booking.ticketItems.map((item) => (
-                                                        <li key={item.ticketTypeId || item.ticketTypeName}>
-                                                            {item.ticketTypeName} × {item.quantity} · ₹{item.unitPrice * item.quantity}
-                                                        </li>
-                                                    ))}
-                                                </ul>
-                                            ) : (
-                                                <p className="mt-3 font-semibold text-white">
-                                                    {booking.ticketTypeName || 'General admission'} · {booking.quantity} ticket{booking.quantity === 1 ? '' : 's'} · ₹{booking.totalPrice}
-                                                </p>
-                                            )}
-                                            {booking.selectedSeats?.length > 0 && (
-                                                <p className="mt-2 text-sm text-slate-400">
-                                                    Seats: {booking.selectedSeats.join(', ')}
-                                                </p>
-                                            )}
+                                            <p className="mt-3 font-semibold text-white">
+                                                {booking.quantity} ticket{booking.quantity === 1 ? '' : 's'} · ₹{booking.totalPrice}
+                                            </p>
                                             {booking.status === 'paid' && (
-                                                <div className="mt-2 flex flex-wrap items-center gap-3">
-                                                    <p className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-500/10 px-3 py-1.5 text-sm font-medium text-emerald-300 ring-1 ring-emerald-500/30">
-                                                        <TicketIcon className="h-4 w-4" />
-                                                        Ticket code: {booking.ticketCode}
-                                                    </p>
-                                                    <Link
-                                                        to={`/tickets/${booking._id}`}
-                                                        className="text-sm font-semibold text-brand-400 hover:text-brand-300"
-                                                    >
-                                                        Open digital ticket
-                                                    </Link>
-                                                </div>
+                                                <p className="mt-2 inline-flex items-center gap-1.5 rounded-lg bg-emerald-500/10 px-3 py-1.5 text-sm font-medium text-emerald-300 ring-1 ring-emerald-500/30">
+                                                    <TicketIcon className="h-4 w-4" />
+                                                    Ticket code: {booking.ticketCode}
+                                                </p>
                                             )}
                                         </div>
                                         {booking.status === 'pending' && (

@@ -16,14 +16,8 @@ import ForgotPasswordPage from './pages/ForgotPasswordPage'
 import ResetPasswordPage from './pages/ResetPasswordPage'
 import AccountPage from './pages/AccountPage'
 import AnalyticsPage from './pages/AnalyticsPage'
-import CartPage from './pages/CartPage'
-import CheckoutPage from './pages/CheckoutPage'
-import TicketPage from './pages/TicketPage'
-import CheckInPage from './pages/CheckInPage'
-import AdminOperationsPage from './pages/AdminOperationsPage'
-import OrganizerEventPage from './pages/OrganizerEventPage'
 
-function RequireAuth({ children, adminOnly = false, organizerAllowed = false }) {
+function RequireAuth({ children, adminOnly = false }) {
   const user = useSelector((state) => state.auth.user)
   const location = useLocation()
 
@@ -31,9 +25,6 @@ function RequireAuth({ children, adminOnly = false, organizerAllowed = false }) 
     return <Navigate to="/login" replace state={{ from: location }} />
   }
   if (adminOnly && user.role !== 'admin') {
-    return <Navigate to="/events" replace />
-  }
-  if (organizerAllowed && !['admin', 'organizer'].includes(user.role)) {
     return <Navigate to="/events" replace />
   }
   return children
@@ -62,9 +53,8 @@ function App() {
       <Route path="/events/:eventId" element={<RequireAuth><EventDetailPage /></RequireAuth>} />
       <Route
         path="/manage-events"
-        element={<RequireAuth organizerAllowed><EventManagerPage /></RequireAuth>}
+        element={<RequireAuth adminOnly><EventManagerPage /></RequireAuth>}
       />
-      <Route path="/manage-events/:eventId" element={<RequireAuth organizerAllowed><OrganizerEventPage /></RequireAuth>} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
       <Route path="/forgot-password" element={<ForgotPasswordPage />} />
@@ -73,11 +63,6 @@ function App() {
       <Route path="/bookings" element={<RequireAuth><MyBookingsPage /></RequireAuth>} />
       <Route path="/account" element={<RequireAuth><AccountPage /></RequireAuth>} />
       <Route path="/analytics" element={<RequireAuth adminOnly><AnalyticsPage /></RequireAuth>} />
-      <Route path="/cart" element={<RequireAuth><CartPage /></RequireAuth>} />
-      <Route path="/checkout" element={<RequireAuth><CheckoutPage /></RequireAuth>} />
-      <Route path="/tickets/:bookingId" element={<RequireAuth><TicketPage /></RequireAuth>} />
-      <Route path="/check-in" element={<RequireAuth organizerAllowed><CheckInPage /></RequireAuth>} />
-      <Route path="/admin" element={<RequireAuth adminOnly><AdminOperationsPage /></RequireAuth>} />
       <Route path="*" element={<NotFoundPage />} />
     </Routes>
   )

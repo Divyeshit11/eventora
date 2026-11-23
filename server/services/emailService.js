@@ -1,5 +1,6 @@
 const nodemailer = require('nodemailer')
 const path = require('node:path')
+const fs = require('node:fs')
 const { createTicketPdf } = require('./ticketPdfService')
 
 const logoPath = path.resolve(__dirname, '../assets/eventora-logo.png')
@@ -49,12 +50,19 @@ function emailLayout(content) {
 }
 
 function inlineLogoAttachment() {
-    return {
-        filename: 'eventora-logo.png',
-        path: logoPath,
-        cid: 'eventora-logo',
-        contentType: 'image/png',
-        contentDisposition: 'inline',
+    try {
+        // Use bytes rather than a path: Vercel's serverless filesystem is
+        // read-only and deployment paths should not decide email delivery.
+        return {
+            filename: 'eventora-logo.png',
+            content: fs.readFileSync(logoPath),
+            cid: 'eventora-logo',
+            contentType: 'image/png',
+            contentDisposition: 'inline',
+        }
+    } catch (error) {
+        console.warn('Email logo is unavailable; sending email without it:', error.message)
+        return null
     }
 }
 
@@ -67,7 +75,7 @@ async function sendPasswordResetEmail(email, resetUrl) {
         subject: 'Reset your Eventora password',
         text: `We received a request to reset your Eventora password. Use this link within 15 minutes:\n\n${resetUrl}\n\nIf you did not request this, you can ignore this email.`,
         html: emailLayout(`<h1>Reset your password</h1><p>We received a request to reset your Eventora password.</p><p><a href="${safeResetUrl}" style="color:#d59a82">Reset your password</a></p><p>This link expires in 15 minutes. If you did not request this, you can ignore this email.</p>`),
-        attachments: [inlineLogoAttachment()],
+        attachments: [inlineLogoAttachment()].filter(Boolean),
     })
 }
 
@@ -93,7 +101,7 @@ async function sendBookingConfirmationEmail(email, booking) {
             attachments: [
                 { filename: `eventora-ticket-${ticketCode}.pdf`, content: pdf, contentType: 'application/pdf', contentDisposition: 'attachment' },
                 inlineLogoAttachment(),
-            ],
+            ].filter(Boolean),
         })
     } catch (error) {
         console.error('Failed to send booking confirmation email:', error.message)
@@ -112,7 +120,7 @@ async function sendEventReminderEmail(email, booking) {
         from: process.env.SMTP_FROM, to: email, subject: `Reminder: ${event.title} is tomorrow`,
         text: `A reminder that ${event.title} is tomorrow.\n\nDate: ${event.date}\nLocation: ${event.location}\nTickets: ${booking.quantity}\nTicket code: ${ticketCode}\n\nWe look forward to seeing you there.`,
         html: emailLayout(`<h1>Your event is tomorrow</h1><p><strong>${escapeHtml(event.title)}</strong></p><p>${escapeHtml(event.date)}<br>${escapeHtml(event.location)}</p><p>Tickets: ${booking.quantity}<br>Ticket code: <strong>${escapeHtml(ticketCode)}</strong></p><p>We look forward to seeing you there.</p>`),
-        attachments: [inlineLogoAttachment()],
+        attachments: [inlineLogoAttachment()].filter(Boolean),
     })
 }
 

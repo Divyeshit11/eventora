@@ -46,10 +46,13 @@ async function createTicketPdf(booking) {
     const qrImage = Buffer.from(qrDataUrl.split(',')[1], 'base64')
     const event = booking.event || {}
     
-    // Check if logo file exists
-    const logoExists = fs.existsSync(logoPath)
-    if (!logoExists) {
-        console.warn('Logo file not found at:', logoPath, '- PDF will be generated without logo')
+    // Read the optional logo before PDFKit starts drawing. Passing a verified
+    // buffer is reliable in Vercel's read-only serverless filesystem.
+    let logoImage
+    try {
+        logoImage = fs.readFileSync(logoPath)
+    } catch (error) {
+        console.warn('Ticket PDF logo is unavailable; generating without it:', error.message)
     }
     
     return new Promise((resolve, reject) => {
@@ -79,9 +82,14 @@ async function createTicketPdf(booking) {
         document.rect(0, 0, pageWidth, pageHeight).fill(colors.cream)
         document.rect(0, 0, pageWidth, 116).fill(colors.forest)
         
-        // Only add logo if file exists
-        if (logoExists) {
-            document.image(logoPath, margin, 31, { width: 205, height: 58, fit: [205, 58] })
+        // A logo issue must never prevent a paid attendee downloading a valid
+        // QR ticket. PDFKit continues with the rest of the ticket if needed.
+        if (logoImage) {
+            try {
+                document.image(logoImage, margin, 31, { fit: [205, 58] })
+            } catch (error) {
+                console.warn('Ticket PDF logo could not be drawn:', error.message)
+            }
         }
         document.font('Helvetica-Bold').fontSize(9).fillColor(colors.cream)
             .text('YOUR EVENT PASS', pageWidth - margin - 150, 42, {

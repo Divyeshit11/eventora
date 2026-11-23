@@ -1,20 +1,23 @@
 import { useEffect, useState } from 'react'
-import { Link, useNavigate, useParams } from 'react-router'
+import { Link, useParams } from 'react-router'
 import { useSelector } from 'react-redux'
 import Navbar from '../Components/layout/Navbar'
 import Footer from '../Components/layout/Footer'
 import Badge from '../Components/common/Badge'
 import EventImage from '../Components/common/EventImage'
 import Reveal from '../Components/common/Reveal'
+import EmptyState from '../Components/common/EmptyState'
+import { selectEventById } from '../features/events/eventsSelectors'
+import { createPaymentOrder, getEventById, verifyPayment } from '../services/eventService'
 import {
+    ArrowLeftIcon,
     MapPinIcon,
     CalendarIcon,
     TicketIcon,
+    WalletIcon,
+    CompassIcon,
     SparklesIcon,
 } from '../Components/common/icons'
-import { selectEventById } from '../features/events/eventsSelectors'
-import { getEventById, getSeatAvailability } from '../services/eventService'
-import { addCartItem } from '../app/cart'
 
 const categoryVariants = {
     Technology: 'technology',
@@ -27,19 +30,14 @@ const categoryVariants = {
 function EventDetailPage() {
     const { eventId } = useParams()
     const cachedEvent = useSelector((state) => selectEventById(state, eventId))
-    const userId = useSelector((state) => state.auth.user?.id)
-    const navigate = useNavigate()
     const [request, setRequest] = useState({
         eventId: null,
         event: null,
         status: 'loading',
         error: '',
     })
-    const [ticketQuantityState, setTicketQuantityState] = useState({ eventId: null, quantities: {} })
+    const [quantity, setQuantity] = useState(1)
     const [booking, setBooking] = useState({ status: 'idle', message: '' })
-    const [sessionDate, setSessionDate] = useState('')
-    const [seats, setSeats] = useState({ status: 'idle', reservedSeats: [], rows: 0, seatsPerRow: 0 })
-    const [selectedSeats, setSelectedSeats] = useState([])
 
     useEffect(() => {
         if (cachedEvent) return undefined
@@ -85,141 +83,140 @@ function EventDetailPage() {
     const ticketsRemaining = event
         ? Math.max(0, (event.ticketCapacity ?? 100) - (event.ticketsSold ?? 0))
         : 0
-    const ticketTypes = event?.ticketTypes?.length
-        ? event.ticketTypes
-        : event ? [{ _id: '', name: 'General admission', price: event.price, quantity: event.ticketCapacity ?? 100, sold: event.ticketsSold ?? 0 }] : []
-    const ticketQuantities = ticketQuantityState.eventId === eventId ? ticketQuantityState.quantities : {}
-    const selectedTicketItems = ticketTypes.flatMap((type, index) => {
-        const key = String(type._id || type.name)
-        const remaining = Math.max(0, type.quantity - (type.sold || 0))
-        const quantity = ticketQuantities[key] ?? (index === 0 ? Math.min(1, remaining) : 0)
-        return quantity > 0 ? [{ ...type, quantity }] : []
-    })
-    const totalQuantity = selectedTicketItems.reduce((total, item) => total + item.quantity, 0)
-    const totalPrice = selectedTicketItems.reduce((total, item) => total + item.price * item.quantity, 0)
+    const totalPrice = event ? Number(event.price) * quantity : 0
 
-    const sessions = event?.sessions?.length ? event.sessions : event ? [{ date: event.date, label: event.date }] : []
-    const activeSessionDate = sessionDate || sessions[0]?.date || ''
-
-    useEffect(() => {
-        if (!event?.seatingEnabled || !activeSessionDate) return
-        let active = true
-        getSeatAvailability(eventId, activeSessionDate).then((data) => active && setSeats({ status: 'succeeded', ...data })).catch(() => active && setSeats({ status: 'failed', reservedSeats: [], rows: 0, seatsPerRow: 0 }))
-        return () => { active = false }
-    }, [activeSessionDate, event?.seatingEnabled, eventId])
-
-    function handleAddToCart() {
-        if (!totalQuantity || totalQuantity > 10) {
-            setBooking({ status: 'failed', message: 'Choose between 1 and 10 tickets before continuing.' })
-            return
+    async function handleBooking() {
+        setBooking({ status: 'loading', message: '' })
+        try {
+            const order = await createPaymentOrder(eventId, quantity)
+            if (!window.Razorpay) {
+                await new Promise((resolve, reject) => {
+                    const script = document.createElement('script')
+                    script.src = 'https://checkout.razorpay.com/v1/checkout.js'
+                    script.onload = resolve
+                    script.onerror = () => reject(new Error('Unable to load Razorpay Checkout.'))
+                    document.body.appendChild(script)
+                })
+            }
+            const checkout = new window.Razorpay({
+                key: order.keyId,
+                amount: order.amount,
+                currency: order.currency,
+                name: 'Eventora',
+                description: event.title,
+                order_id: order.orderId,
+                handler: async (payment) => {
+                    try {
+                        await verifyPayment(payment)
+                        setBooking({ status: 'succeeded', message: 'Payment verified. Your tickets are confirmed—see My Bookings.' })
+                    } catch (error) {
+                        setBooking({ status: 'failed', message: error.response?.data?.message || 'Payment received but verification is pending. Please contact support.' })
+                    }
+                },
+                modal: { ondismiss: () => setBooking({ status: 'idle', message: 'Payment was not completed. Your seat reservation expires in 15 minutes.' }) },
+                theme: { color: '#6366f1' },
+            })
+            checkout.open()
+        } catch (bookingError) {
+            setBooking({
+                status: 'failed',
+                message: bookingError.response?.data?.message || bookingError.message || 'Unable to complete booking.',
+            })
         }
-        if (event.seatingEnabled && selectedSeats.length !== totalQuantity) { setBooking({ status: 'failed', message: `Select ${totalQuantity} seat${totalQuantity === 1 ? '' : 's'} before continuing.` }); return }
-        if (event.seatingEnabled && seats.status !== 'succeeded') {
-            setBooking({ status: 'failed', message: seats.status === 'failed' ? 'Seat availability could not be loaded. Please refresh and try again.' : 'Seat availability is still loading. Please wait and try again.' })
-            return
-        }
-        const cartTicketItems = selectedTicketItems.map((item) => ({
-            ticketTypeId: item._id || '',
-            ticketTypeName: item.name,
-            quantity: item.quantity,
-            unitPrice: item.price,
-        }))
-        addCartItem(userId, {
-            eventId,
-            title: event.title,
-            sessionDate: activeSessionDate,
-            quantity: totalQuantity,
-            ticketItems: cartTicketItems,
-            ticketTypeId: cartTicketItems.length === 1 ? cartTicketItems[0].ticketTypeId : '',
-            ticketTypeName: cartTicketItems.map((item) => `${item.ticketTypeName} × ${item.quantity}`).join(', '),
-            unitPrice: totalPrice / totalQuantity,
-            selectedSeats,
-            totalPrice,
-        })
-        navigate('/cart')
     }
-
-    function setTicketQuantity(ticketType, index, value) {
-        const key = String(ticketType._id || ticketType.name)
-        const remaining = Math.max(0, ticketType.quantity - (ticketType.sold || 0))
-        const currentQuantity = ticketQuantities[key] ?? (index === 0 ? Math.min(1, remaining) : 0)
-        const otherQuantity = totalQuantity - currentQuantity
-        const nextQuantity = Math.max(0, Math.min(Number(value), remaining, 10 - otherQuantity))
-        setTicketQuantityState((current) => ({
-            eventId,
-            quantities: {
-                ...(current.eventId === eventId ? current.quantities : {}),
-                [key]: nextQuantity,
-            },
-        }))
-        setSelectedSeats((current) => current.slice(0, otherQuantity + nextQuantity))
-        setBooking({ status: 'idle', message: '' })
-    }
-
-    function toggleSeat(seat) { if (seats.reservedSeats.includes(seat)) return; setSelectedSeats((current) => current.includes(seat) ? current.filter((item) => item !== seat) : current.length < totalQuantity ? [...current, seat] : current) }
 
     return (
         <div className="min-h-screen bg-surface text-white">
             <Navbar />
 
-            <main className="mx-auto min-w-0 max-w-7xl px-4 py-12 sm:px-6 lg:py-16">
-                <Link
-                    to="/events"
-                    className="inline-block text-sm text-slate-400 transition hover:text-white"
-                >
-                    ← Back to Events
-                </Link>
+            <main className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:py-14">
+                <Reveal>
+                    <Link
+                        to="/events"
+                        className="group inline-flex items-center gap-2 text-sm font-medium text-slate-400 transition hover:text-white"
+                    >
+                        <ArrowLeftIcon className="h-4 w-4 transition-transform group-hover:-translate-x-1" />
+                        Back to Events
+                    </Link>
+                </Reveal>
 
                 {status === 'loading' && (
-                    <p className="py-16 text-center text-slate-400" role="status">
-                        Loading event...
-                    </p>
+                    <div className="grid gap-10 py-16 lg:grid-cols-2" aria-live="polite">
+                        <div className="img-shimmer h-72 w-full animate-pulse rounded-3xl sm:h-96" />
+                        <div className="space-y-4">
+                            <div className="h-6 w-32 animate-pulse rounded-full bg-surface-raised" />
+                            <div className="h-10 w-3/4 animate-pulse rounded-xl bg-surface-raised" />
+                            <div className="h-4 w-1/2 animate-pulse rounded-lg bg-surface-raised" />
+                            <div className="h-24 w-full animate-pulse rounded-2xl bg-surface-raised" />
+                        </div>
+                        <p className="sr-only" role="status">Loading event...</p>
+                    </div>
                 )}
 
                 {status === 'failed' && (
-                    <section className="mx-auto max-w-3xl py-16 text-center">
-                        <h1 className="text-3xl font-bold">Event unavailable</h1>
-                        <p className="mt-4 text-slate-400">{error}</p>
-                        <Link
-                            to="/events"
-                            className="mt-6 inline-block text-brand-500 hover:text-brand-400"
-                        >
-                            Browse Events
-                        </Link>
-                    </section>
+                    <EmptyState
+                        className="mx-auto mt-10 max-w-3xl"
+                        icon={<CompassIcon className="h-9 w-9" />}
+                        title="Event unavailable"
+                        description={error}
+                        action={
+                            <Link
+                                to="/events"
+                                className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-brand-600 to-brand-500 px-6 py-3 font-semibold text-white shadow-lg shadow-brand-600/30 transition hover:brightness-110"
+                            >
+                                Browse Events
+                                <ArrowLeftIcon className="h-4 w-4 rotate-180" />
+                            </Link>
+                        }
+                    />
                 )}
 
                 {status === 'succeeded' && !event && (
-                    <section className="mx-auto max-w-3xl py-16 text-center">
-                        <h1 className="text-3xl font-bold">Event not found</h1>
-                        <p className="mt-4 text-slate-400">
-                            Sorry, we couldn't find the event you're looking for.
-                        </p>
-                    </section>
+                    <EmptyState
+                        className="mx-auto mt-10 max-w-3xl"
+                        icon={<CompassIcon className="h-9 w-9" />}
+                        title="Event not found"
+                        description="Sorry, we couldn't find the event you're looking for."
+                        action={
+                            <Link
+                                to="/events"
+                                className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-brand-600 to-brand-500 px-6 py-3 font-semibold text-white shadow-lg shadow-brand-600/30 transition hover:brightness-110"
+                            >
+                                Browse Events
+                                <ArrowLeftIcon className="h-4 w-4 rotate-180" />
+                            </Link>
+                        }
+                    />
                 )}
 
                 {event && (
-                    <div className="mt-8 grid min-w-0 gap-10 lg:grid-cols-2 lg:items-start">
-                        <Reveal className="min-w-0">
-                            <EventImage
-                                src={event.image}
-                                alt={event.title}
-                                className="h-72 w-full rounded-2xl border border-surface-border object-cover sm:h-96"
-                            />
-                        </Reveal>
-                        <div className="min-w-0">
-                            <Badge variant={categoryVariants[event.category] ?? 'other'}>
-                                {event.category}
-                            </Badge>
+                    <div className="mt-8 grid gap-10 lg:grid-cols-[1.15fr_0.85fr] lg:items-start">
+                        {/* Media + details */}
+                        <div>
+                            <Reveal>
+                                <div className="gradient-border relative overflow-hidden rounded-[2rem]">
+                                    <EventImage
+                                        src={event.image}
+                                        alt={event.title}
+                                        className="h-72 w-full object-cover sm:h-[26rem]"
+                                    />
+                                    <div className="absolute inset-0 bg-gradient-to-t from-surface via-transparent to-transparent" />
+                                    <div className="absolute bottom-5 left-5">
+                                        <Badge variant={categoryVariants[event.category] ?? 'other'}>
+                                            {event.category}
+                                        </Badge>
+                                    </div>
+                                </div>
+                            </Reveal>
 
                             <Reveal delay={120}>
-                                <h1 className="mt-5 font-display text-3xl font-extrabold tracking-tight text-white sm:text-5xl">
+                                <h1 className="mt-8 font-display text-3xl font-extrabold tracking-tight text-white sm:text-5xl">
                                     {event.title}
                                 </h1>
                             </Reveal>
 
                             <Reveal delay={200}>
-                                <div className="mt-6 grid gap-3 sm:grid-cols-2">
+                                <div className="mt-6 grid gap-3 sm:grid-cols-3">
                                     <div className="card-surface flex items-center gap-3 rounded-2xl p-4">
                                         <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-brand-500/15 text-brand-300 ring-1 ring-brand-500/30">
                                             <MapPinIcon className="h-5 w-5" />
@@ -227,8 +224,6 @@ function EventDetailPage() {
                                         <div className="min-w-0">
                                             <p className="text-xs text-slate-500">Location</p>
                                             <p className="truncate text-sm font-semibold text-white">{event.location}</p>
-                                            {event.venueAddress && <p className="mt-1 truncate text-xs text-slate-400">{event.venueAddress}</p>}
-                                            {event.venueContact && <p className="mt-1 text-xs text-slate-400">{event.venueContact}</p>}
                                         </div>
                                     </div>
                                     <div className="card-surface flex items-center gap-3 rounded-2xl p-4">
@@ -246,16 +241,9 @@ function EventDetailPage() {
                                         </span>
                                         <div className="min-w-0">
                                             <p className="text-xs text-slate-500">Tickets left</p>
-                                            <p className="text-sm font-semibold text-white">{ticketsRemaining > 0 ? ticketsRemaining : 'Sold out'}</p>
-                                        </div>
-                                    </div>
-                                    <div className="card-surface flex items-center gap-3 rounded-2xl p-4">
-                                        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-brand-500/15 text-brand-300 ring-1 ring-brand-500/30">
-                                            <SparklesIcon className="h-5 w-5" />
-                                        </span>
-                                        <div className="min-w-0">
-                                            <p className="text-xs text-slate-500">{ticketTypes.length > 1 ? 'Tickets from' : 'Ticket price'}</p>
-                                            <p className="text-sm font-semibold text-white">₹{Math.min(...ticketTypes.map((type) => type.price))}</p>
+                                            <p className="text-sm font-semibold text-white">
+                                                {ticketsRemaining > 0 ? ticketsRemaining : 'Sold out'}
+                                            </p>
                                         </div>
                                     </div>
                                 </div>
@@ -263,144 +251,83 @@ function EventDetailPage() {
 
                             <Reveal delay={280}>
                                 <div className="card-surface mt-8 rounded-3xl p-6 sm:p-8">
-                                    <h2 className="font-display text-lg font-bold text-white">About this event</h2>
+                                    <h2 className="flex items-center gap-2 font-display text-lg font-bold text-white">
+                                        <SparklesIcon className="h-5 w-5 text-accent-400" />
+                                        About this event
+                                    </h2>
                                     <p className="mt-4 leading-8 text-slate-300">
                                         {event.description ||
                                             'Discover this event with Eventora. Explore the event details and find an experience that matches your interests.'}
                                     </p>
                                 </div>
                             </Reveal>
+                        </div>
 
-                            <div className="gradient-border card-surface mt-8 min-w-0 rounded-[2rem] p-4 sm:p-7">
-                                <h2 className="font-display text-lg font-bold text-white">Choose your tickets</h2>
-                                <p className="mb-3 text-sm text-slate-400">
-                                    {ticketsRemaining > 0 ? `${ticketsRemaining} ticket${ticketsRemaining === 1 ? '' : 's'} remaining` : 'Sold out'}
-                                </p>
-                                {ticketTypes.length > 1 && <p className="mb-3 text-sm text-slate-400">Choose quantities for each ticket type. All selected types are paid together at checkout.</p>}
-                                <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                                    {ticketTypes.map((type, index) => {
-                                        const key = String(type._id || type.name)
-                                        const remaining = Math.max(0, type.quantity - (type.sold || 0))
-                                        const selectedQuantity = ticketQuantities[key] ?? (index === 0 ? Math.min(1, remaining) : 0)
-                                        const maxQuantity = Math.min(remaining, 10 - totalQuantity + selectedQuantity)
-                                        return (
-                                            <div key={key} className="card-surface grid gap-3 rounded-xl p-4 sm:flex sm:items-center sm:justify-between">
-                                                <div className="min-w-0">
-                                                    <p className="text-xs font-semibold uppercase tracking-wider text-brand-200">Ticket category</p>
-                                                    <p className="mt-1 truncate font-semibold text-white">{type.name}</p>
-                                                    <p className="mt-1 text-sm text-slate-400">₹{type.price} · {remaining} left</p>
-                                                </div>
-                                                <div className="flex items-center justify-between gap-3 text-sm font-medium text-slate-200 sm:justify-start">
-                                                    <span>Quantity</span>
-                                                    <div className="ticket-quantity-stepper" role="group" aria-label={`${type.name} ticket quantity`}>
-                                                        <button
-                                                            type="button"
-                                                            aria-label={`Decrease ${type.name} quantity`}
-                                                            disabled={selectedQuantity === 0}
-                                                            onClick={() => setTicketQuantity(type, index, selectedQuantity - 1)}
-                                                            className="ticket-quantity-button"
-                                                        >
-                                                            −
-                                                        </button>
-                                                        <span aria-label={`${type.name} quantity`} aria-live="polite" className="ticket-quantity-value">
-                                                            {selectedQuantity}
-                                                        </span>
-                                                        <button
-                                                            type="button"
-                                                            aria-label={`Increase ${type.name} quantity`}
-                                                            disabled={selectedQuantity >= maxQuantity}
-                                                            onClick={() => setTicketQuantity(type, index, selectedQuantity + 1)}
-                                                            className="ticket-quantity-button"
-                                                        >
-                                                            +
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        )
-                                    })}
+                        {/* Booking panel */}
+                        <Reveal delay={200} className="lg:sticky lg:top-24">
+                            <div className="gradient-border card-surface rounded-[2rem] p-6 sm:p-7">
+                                <div className="flex items-end justify-between gap-4">
+                                    <div>
+                                        <p className="text-sm text-slate-400">Ticket price</p>
+                                        <p className="font-display text-4xl font-extrabold text-white">
+                                            ₹{event.price}
+                                        </p>
+                                    </div>
+                                    <span className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                                        ticketsRemaining > 0
+                                            ? 'bg-emerald-500/15 text-emerald-300 ring-1 ring-emerald-500/30'
+                                            : 'bg-red-500/15 text-red-300 ring-1 ring-red-500/30'
+                                    }`}>
+                                        {ticketsRemaining > 0 ? 'Available' : 'Sold out'}
+                                    </span>
                                 </div>
-                                {sessions.length > 1 && <label className="mt-5 grid gap-2 text-sm font-medium text-slate-200">Choose date<select value={activeSessionDate} onChange={(change) => { setSessionDate(change.target.value); setSelectedSeats([]) }} className="min-h-11 w-full rounded-lg border border-surface-border bg-surface px-3 py-3 text-white">{sessions.map((session) => <option key={session.date} value={session.date}>{session.label || session.date}</option>)}</select></label>}
-                                <div className="mt-5 grid gap-3 border-t border-white/[0.08] pt-4 sm:flex sm:flex-wrap sm:items-center">
-                                    <p className="text-sm text-slate-300 sm:mr-auto">
-                                        {totalQuantity} selected · Total ₹{totalPrice}
-                                    </p>
+
+                                <div className="mt-6 border-t border-surface-border/70 pt-6">
+                                    <label className="grid gap-2 text-sm font-medium text-slate-300">
+                                        Number of tickets
+                                        <select
+                                            value={quantity}
+                                            onChange={(e) => setQuantity(Number(e.target.value))}
+                                            disabled={ticketsRemaining === 0 || booking.status === 'loading'}
+                                            className="field py-3"
+                                        >
+                                            {Array.from({ length: Math.min(10, ticketsRemaining) }, (_, index) => index + 1).map((value) => (
+                                                <option key={value} value={value}>{value}</option>
+                                            ))}
+                                        </select>
+                                    </label>
+
+                                    <div className="mt-4 flex items-center justify-between rounded-2xl bg-surface/60 px-4 py-3 text-sm">
+                                        <span className="text-slate-400">Total</span>
+                                        <span className="font-display text-lg font-bold text-white">₹{totalPrice}</span>
+                                    </div>
+
                                     <button
                                         type="button"
-                                        onClick={handleAddToCart}
-                                        disabled={totalQuantity === 0}
-                                        className="min-h-12 w-full rounded-xl bg-gradient-to-r from-brand-600 to-brand-500 px-5 py-3 font-semibold text-white shadow-lg shadow-brand-600/30 transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
+                                        onClick={handleBooking}
+                                        disabled={ticketsRemaining === 0 || booking.status === 'loading'}
+                                        className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-brand-600 to-brand-500 px-6 py-4 font-semibold text-white shadow-lg shadow-brand-600/30 transition hover:shadow-brand-500/50 hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
                                     >
-                                        Add selected tickets to Cart
+                                        <WalletIcon className="h-5 w-5" />
+                                        {booking.status === 'loading' ? 'Opening secure payment...' : 'Book This Event'}
                                     </button>
-                                </div>
-                                {event.seatingEnabled && (
-                                    <section className="mt-6 min-w-0 overflow-hidden rounded-xl border border-surface-border p-3 sm:p-4" aria-label="Seat selection">
-                                        <div className="flex flex-wrap items-baseline justify-between gap-2">
-                                        <p className="text-sm font-semibold">
-                                            Select seats ({selectedSeats.length}/{totalQuantity})
+
+                                    {booking.message && (
+                                        <p className={`mt-4 rounded-xl border px-4 py-3 text-sm ${booking.status === 'failed'
+                                            ? 'border-red-800 bg-red-950/30 text-red-300'
+                                            : 'border-emerald-800 bg-emerald-950/30 text-emerald-300'
+                                            }`} role={booking.status === 'failed' ? 'alert' : 'status'}>
+                                            {booking.message}
                                         </p>
-                                        <p className="text-xs text-slate-400">Swipe sideways for more seats</p>
-                                        </div>
-                                        <div className="mt-4 min-w-0 max-w-full overflow-x-auto overscroll-x-contain pb-3 [-webkit-overflow-scrolling:touch]">
-                                            <div className="w-max min-w-full">
-                                                <div className="mb-4 rounded-lg border border-surface-border bg-surface-card px-4 py-2 text-center text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">
-                                                    Stage
-                                                </div>
-                                                {Array.from({ length: seats.rows || 0 }, (_, rowIndex) => {
-                                                    const row = String.fromCharCode(65 + rowIndex)
-                                                    return (
-                                                        <div key={row} className="mb-1.5 flex items-center gap-1.5 last:mb-0">
-                                                            <span className="sticky left-0 z-10 w-6 shrink-0 bg-surface py-2 text-center text-xs font-semibold text-slate-400">
-                                                                {row}
-                                                            </span>
-                                                            <div
-                                                                className="grid gap-1 sm:gap-1.5"
-                                                                style={{ gridTemplateColumns: `repeat(${seats.seatsPerRow}, minmax(2rem, 2.25rem))` }}
-                                                            >
-                                                                {Array.from({ length: seats.seatsPerRow || 0 }, (_, seatIndex) => {
-                                                                    const seat = `${row}${seatIndex + 1}`
-                                                                    const reserved = seats.reservedSeats.includes(seat)
-                                                                    const selected = selectedSeats.includes(seat)
-                                                                    return (
-                                                                        <button
-                                                                            key={seat}
-                                                                            type="button"
-                                                                            disabled={reserved}
-                                                                            onClick={() => toggleSeat(seat)}
-                                                                            aria-label={`${seat}${reserved ? ', reserved' : selected ? ', selected' : ', available'}`}
-                                                                            aria-pressed={selected}
-                                                                            className={`h-8 w-8 rounded-md text-[10px] font-semibold transition-colors sm:h-9 sm:w-9 ${reserved ? 'cursor-not-allowed bg-slate-800 text-slate-500' : selected ? 'bg-brand-600 text-white' : 'border border-surface-border text-slate-300 hover:border-brand-500 hover:bg-brand-500/10'}`}
-                                                                        >
-                                                                            {seat}
-                                                                        </button>
-                                                                    )
-                                                                })}
-                                                            </div>
-                                                        </div>
-                                                    )
-                                                })}
-                                            </div>
-                                        </div>
-                                        {seats.status === 'loading' && <p className="mt-3 text-sm text-slate-400">Loading seats...</p>}
-                                        {seats.status === 'failed' && <p className="mt-3 text-sm text-red-300" role="alert">Unable to load seat availability. Please refresh and try again.</p>}
-                                        {seats.status === 'succeeded' && seats.rows > 0 && (
-                                            <div className="mt-4 flex flex-wrap gap-x-4 gap-y-2 border-t border-surface-border pt-3 text-xs text-slate-400">
-                                                <span><span className="mr-1.5 inline-block h-3 w-3 rounded-sm border border-surface-border align-middle" />Available</span>
-                                                <span><span className="mr-1.5 inline-block h-3 w-3 rounded-sm bg-brand-600 align-middle" />Selected</span>
-                                                <span><span className="mr-1.5 inline-block h-3 w-3 rounded-sm bg-slate-700 align-middle" />Reserved</span>
-                                            </div>
-                                        )}
-                                        {seats.status === 'succeeded' && seats.rows === 0 && <p className="mt-3 text-sm text-slate-400">Seat layout is not available for this event.</p>}
-                                    </section>
-                                )}
-                                {booking.message && (
-                                    <p className={`mt-3 text-sm ${booking.status === 'failed' ? 'text-red-300' : 'text-emerald-300'}`} role={booking.status === 'failed' ? 'alert' : 'status'}>
-                                        {booking.message}
+                                    )}
+
+                                    <p className="mt-4 flex items-center gap-2 text-xs text-slate-500">
+                                        <SparklesIcon className="h-3.5 w-3.5 text-brand-400" />
+                                        Secure checkout powered by Razorpay
                                     </p>
-                                )}
+                                </div>
                             </div>
-                        </div>
+                        </Reveal>
                     </div>
                 )}
             </main>

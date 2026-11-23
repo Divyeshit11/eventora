@@ -99,7 +99,7 @@ function FavoritesPage() {
                         type="button"
                         onClick={() => dispatch(setFavorite({ eventId: getEventId(event), isFavorite: false }))}
                         aria-label={`Remove ${event.title} from favorites`}
-                        className="absolute right-4 top-4 grid h-10 w-10 place-items-center rounded-full border border-accent-400/50 bg-accent-500/25 text-accent-300 shadow-lg shadow-accent-500/30 backdrop-blur-md transition hover:scale-110"
+                        className="absolute right-4 top-4 grid h-10 w-10 place-items-center rounded-full border border-pink-400/50 bg-pink-500/25 text-pink-300 shadow-lg shadow-pink-500/30 backdrop-blur-md transition hover:scale-110"
                       >
                         <HeartIcon filled className="h-5 w-5" />
                       </button>

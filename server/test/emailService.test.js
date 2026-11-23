@@ -113,7 +113,7 @@ test('sends booking confirmation with a downloadable PDF ticket attachment', asy
         assert.equal(sentMessage.attachments[1].contentType, 'image/png')
         assert.equal(sentMessage.attachments[1].contentDisposition, 'inline')
         assert.equal(
-            require('node:fs').readFileSync(sentMessage.attachments[1].path).subarray(0, 8).toString('hex'),
+            sentMessage.attachments[1].content.subarray(0, 8).toString('hex'),
             '89504e470d0a1a0a'
         )
         const pdfText = sentMessage.attachments[0].content.toString('latin1')
