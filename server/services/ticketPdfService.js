@@ -295,4 +295,56 @@ async function createTicketPdf(booking) {
     }
 }
 
-module.exports = { createTicketPdf }
+function pdfText(value) {
+    // The emergency PDF uses the built-in Helvetica font, which only needs
+    // ASCII text. This avoids external font/image/native dependencies.
+    return safeText(value)
+        .replace(/[^\x20-\x7E]/g, '?')
+        .replace(/([\\()])/g, '\\$1')
+}
+
+function createMinimalTicketPdf(booking) {
+    const event = booking.event || {}
+    const lines = [
+        ['EVENTORA TICKET', 22],
+        ['', 12],
+        [event.title || 'Eventora event', 18],
+        [formatDate(booking.sessionDate || event.date || ''), 12],
+        [event.location || 'Venue to be confirmed', 12],
+        ['', 12],
+        [`Ticket code: ${booking.ticketCode || 'Unavailable'}`, 15],
+        [`Tickets: ${booking.quantity || 1}`, 12],
+        [`Seats: ${Array.isArray(booking.selectedSeats) && booking.selectedSeats.length ? booking.selectedSeats.join(', ') : 'General admission'}`, 12],
+        [`Ticket type: ${booking.ticketTypeName || 'General admission'}`, 12],
+        ['', 12],
+        ['Present this ticket code at event entry.', 10],
+    ]
+    let y = 790
+    const commands = ['BT']
+    for (const [line, size] of lines) {
+        commands.push(`/F1 ${size} Tf`, `1 0 0 1 48 ${y} Tm`, `(${pdfText(line)}) Tj`)
+        y -= size + 13
+    }
+    commands.push('ET')
+    const stream = commands.join('\n')
+    const objects = [
+        '<< /Type /Catalog /Pages 2 0 R >>',
+        '<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
+        '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 5 0 R >> >> /Contents 4 0 R >>',
+        `<< /Length ${Buffer.byteLength(stream, 'ascii')} >>\nstream\n${stream}\nendstream`,
+        '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>',
+    ]
+    let output = '%PDF-1.4\n%\xE2\xE3\xCF\xD3\n'
+    const offsets = [0]
+    for (let index = 0; index < objects.length; index += 1) {
+        offsets.push(Buffer.byteLength(output, 'binary'))
+        output += `${index + 1} 0 obj\n${objects[index]}\nendobj\n`
+    }
+    const xrefOffset = Buffer.byteLength(output, 'binary')
+    output += `xref\n0 ${objects.length + 1}\n0000000000 65535 f \n`
+    output += offsets.slice(1).map((offset) => `${String(offset).padStart(10, '0')} 00000 n \n`).join('')
+    output += `trailer\n<< /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xrefOffset}\n%%EOF\n`
+    return Buffer.from(output, 'binary')
+}
+
+module.exports = { createTicketPdf, createMinimalTicketPdf }

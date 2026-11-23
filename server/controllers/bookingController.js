@@ -1,7 +1,7 @@
 const mongoose = require('mongoose')
 const Booking = require('../models/Booking')
 const Event = require('../models/Event')
-const { createTicketPdf } = require('../services/ticketPdfService')
+const { createTicketPdf, createMinimalTicketPdf } = require('../services/ticketPdfService')
 
 function invalid(res, message) {
     return res.status(400).json({ success: false, message })
@@ -89,7 +89,15 @@ async function downloadBookingTicket(req, res) {
             return res.status(404).json({ success: false, message: 'Ticket not found' })
         }
         console.log(`Booking found, creating PDF for ticket code: ${booking.ticketCode}`)
-        const pdf = await createTicketPdf(booking)
+        let pdf
+        try {
+            pdf = await createTicketPdf(booking)
+        } catch (error) {
+            // A paid attendee must not lose access to a ticket because the
+            // decorated PDF renderer is unavailable in a serverless runtime.
+            console.error('Ticket PDF renderer failed; using minimal PDF:', error.stack || error.message)
+            pdf = createMinimalTicketPdf(booking)
+        }
         console.log(`PDF created successfully, size: ${pdf.length} bytes`)
         res.setHeader('Content-Type', 'application/pdf')
         res.setHeader('Content-Disposition', `attachment; filename="eventora-ticket-${booking.ticketCode}.pdf"`)
