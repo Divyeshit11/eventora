@@ -54,7 +54,7 @@ describe('EventDetailsPage ticket selection', () => {
             </Provider>,
         )
 
-        await user.selectOptions(screen.getByRole('combobox', { name: 'VIP quantity' }), '1')
+        await user.click(screen.getByRole('button', { name: 'Increase VIP quantity' }))
         expect(screen.getByText('2 selected · Total ₹298')).toBeInTheDocument()
         await user.click(screen.getByRole('button', { name: 'Add selected tickets to Cart' }))
 

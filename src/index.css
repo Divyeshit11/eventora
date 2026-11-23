@@ -247,6 +247,65 @@ main {
     animation: var(--animate-shimmer);
 }
 
+/* Ticket quantity controls need explicit browser-neutral styling. Native
+   controls and utility-only layouts can render with poor contrast in mobile
+   webviews. */
+.ticket-quantity-stepper {
+    display: inline-grid;
+    grid-template-columns: 2.75rem minmax(2.75rem, auto) 2.75rem;
+    min-height: 2.75rem;
+    overflow: hidden;
+    border: 1px solid rgba(145, 185, 162, 0.42);
+    border-radius: 0.65rem;
+    background: #0b1c17;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+.ticket-quantity-button {
+    display: grid;
+    width: 2.75rem;
+    height: 2.75rem;
+    place-items: center;
+    border: 0;
+    background: #175d45;
+    color: #fff;
+    font-size: 1.35rem;
+    font-weight: 700;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.ticket-quantity-button:first-child {
+    border-right: 1px solid rgba(145, 185, 162, 0.28);
+}
+
+.ticket-quantity-button:last-child {
+    border-left: 1px solid rgba(145, 185, 162, 0.28);
+}
+
+.ticket-quantity-button:not(:disabled):hover,
+.ticket-quantity-button:not(:disabled):focus-visible {
+    background: #247456;
+}
+
+.ticket-quantity-button:disabled {
+    cursor: not-allowed;
+    background: #183229;
+    color: #779287;
+}
+
+.ticket-quantity-value {
+    display: grid;
+    min-width: 2.75rem;
+    height: 2.75rem;
+    padding: 0 0.65rem;
+    place-items: center;
+    color: #fff;
+    font-size: 1rem;
+    font-weight: 800;
+    background: #10251e;
+}
+
 /* animated gradient border wrapper */
 .gradient-border {
     position: relative;

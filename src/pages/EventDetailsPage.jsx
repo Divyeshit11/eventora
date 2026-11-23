@@ -162,7 +162,7 @@ function EventDetailPage() {
         <div className="min-h-screen bg-surface text-white">
             <Navbar />
 
-            <main className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:py-16">
+            <main className="mx-auto min-w-0 max-w-7xl px-4 py-12 sm:px-6 lg:py-16">
                 <Link
                     to="/events"
                     className="inline-block text-sm text-slate-400 transition hover:text-white"
@@ -199,15 +199,15 @@ function EventDetailPage() {
                 )}
 
                 {event && (
-                    <div className="mt-8 grid gap-10 lg:grid-cols-2 lg:items-start">
-                        <Reveal>
+                    <div className="mt-8 grid min-w-0 gap-10 lg:grid-cols-2 lg:items-start">
+                        <Reveal className="min-w-0">
                             <EventImage
                                 src={event.image}
                                 alt={event.title}
                                 className="h-72 w-full rounded-2xl border border-surface-border object-cover sm:h-96"
                             />
                         </Reveal>
-                        <div>
+                        <div className="min-w-0">
                             <Badge variant={categoryVariants[event.category] ?? 'other'}>
                                 {event.category}
                             </Badge>
@@ -271,7 +271,7 @@ function EventDetailPage() {
                                 </div>
                             </Reveal>
 
-                            <div className="gradient-border card-surface mt-8 rounded-[2rem] p-6 sm:p-7">
+                            <div className="gradient-border card-surface mt-8 min-w-0 rounded-[2rem] p-4 sm:p-7">
                                 <h2 className="font-display text-lg font-bold text-white">Choose your tickets</h2>
                                 <p className="mb-3 text-sm text-slate-400">
                                     {ticketsRemaining > 0 ? `${ticketsRemaining} ticket${ticketsRemaining === 1 ? '' : 's'} remaining` : 'Sold out'}
@@ -290,20 +290,32 @@ function EventDetailPage() {
                                                     <p className="mt-1 truncate font-semibold text-white">{type.name}</p>
                                                     <p className="mt-1 text-sm text-slate-400">₹{type.price} · {remaining} left</p>
                                                 </div>
-                                                <label className="flex items-center justify-between gap-3 text-sm font-medium text-slate-200 sm:justify-start">
+                                                <div className="flex items-center justify-between gap-3 text-sm font-medium text-slate-200 sm:justify-start">
                                                     <span>Quantity</span>
-                                                    <select
-                                                        aria-label={`${type.name} quantity`}
-                                                        value={selectedQuantity}
-                                                        disabled={remaining === 0}
-                                                        onChange={(change) => setTicketQuantity(type, index, change.target.value)}
-                                                        className="min-h-11 rounded-lg border border-surface-border bg-surface px-3 py-2 text-white disabled:opacity-50"
-                                                    >
-                                                        {Array.from({ length: maxQuantity + 1 }, (_, value) => (
-                                                            <option key={value} value={value}>{value}</option>
-                                                        ))}
-                                                    </select>
-                                                </label>
+                                                    <div className="ticket-quantity-stepper" role="group" aria-label={`${type.name} ticket quantity`}>
+                                                        <button
+                                                            type="button"
+                                                            aria-label={`Decrease ${type.name} quantity`}
+                                                            disabled={selectedQuantity === 0}
+                                                            onClick={() => setTicketQuantity(type, index, selectedQuantity - 1)}
+                                                            className="ticket-quantity-button"
+                                                        >
+                                                            −
+                                                        </button>
+                                                        <span aria-label={`${type.name} quantity`} aria-live="polite" className="ticket-quantity-value">
+                                                            {selectedQuantity}
+                                                        </span>
+                                                        <button
+                                                            type="button"
+                                                            aria-label={`Increase ${type.name} quantity`}
+                                                            disabled={selectedQuantity >= maxQuantity}
+                                                            onClick={() => setTicketQuantity(type, index, selectedQuantity + 1)}
+                                                            className="ticket-quantity-button"
+                                                        >
+                                                            +
+                                                        </button>
+                                                    </div>
+                                                </div>
                                             </div>
                                         )
                                     })}
@@ -323,14 +335,14 @@ function EventDetailPage() {
                                     </button>
                                 </div>
                                 {event.seatingEnabled && (
-                                    <section className="mt-6 overflow-hidden rounded-xl border border-surface-border p-3 sm:p-4" aria-label="Seat selection">
+                                    <section className="mt-6 min-w-0 overflow-hidden rounded-xl border border-surface-border p-3 sm:p-4" aria-label="Seat selection">
                                         <div className="flex flex-wrap items-baseline justify-between gap-2">
                                         <p className="text-sm font-semibold">
                                             Select seats ({selectedSeats.length}/{totalQuantity})
                                         </p>
                                         <p className="text-xs text-slate-400">Swipe sideways for more seats</p>
                                         </div>
-                                        <div className="mt-4 overflow-x-auto overscroll-x-contain pb-3 [-webkit-overflow-scrolling:touch]">
+                                        <div className="mt-4 min-w-0 max-w-full overflow-x-auto overscroll-x-contain pb-3 [-webkit-overflow-scrolling:touch]">
                                             <div className="w-max min-w-full">
                                                 <div className="mb-4 rounded-lg border border-surface-border bg-surface-card px-4 py-2 text-center text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">
                                                     Stage
