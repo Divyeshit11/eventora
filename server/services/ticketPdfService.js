@@ -41,7 +41,7 @@ function drawLabel(document, label, x, y, width) {
         .text(label.toUpperCase(), x, y, { width, characterSpacing: 0.9, lineBreak: false })
 }
 
-async function createTicketPdf(booking) {
+async function createDesignedTicketPdf(booking) {
     const qrDataUrl = await QRCode.toDataURL(booking.ticketCode, { margin: 1, width: 300 })
     const qrImage = Buffer.from(qrDataUrl.split(',')[1], 'base64')
     const event = booking.event || {}
@@ -233,6 +233,66 @@ async function createTicketPdf(booking) {
             })
         document.end()
     })
+}
+
+function createFallbackTicketPdf(booking) {
+    const event = booking.event || {}
+    const ticketCode = safeText(booking.ticketCode, 'Ticket code unavailable')
+    const eventTitle = safeText(event.title, 'Eventora event')
+    const eventDate = formatDate(booking.sessionDate || event.date || '')
+    const venue = safeText(event.location, 'Venue to be confirmed')
+    const ticketItems = Array.isArray(booking.ticketItems) && booking.ticketItems.length
+        ? booking.ticketItems
+        : [{ ticketTypeName: booking.ticketTypeName || 'General admission', quantity: booking.quantity || 1 }]
+    const seats = Array.isArray(booking.selectedSeats) && booking.selectedSeats.length
+        ? booking.selectedSeats.join(', ')
+        : 'General admission'
+
+    return new Promise((resolve, reject) => {
+        const document = new PDFDocument({ size: 'A4', margin: 48, compress: true })
+        const chunks = []
+        document.on('data', (chunk) => chunks.push(chunk))
+        document.on('end', () => resolve(Buffer.concat(chunks)))
+        document.on('error', reject)
+
+        document.rect(0, 0, document.page.width, 126).fill(colors.forest)
+        document.font('Helvetica-Bold').fontSize(28).fillColor(colors.cream)
+            .text('EVENTORA', 48, 48, { characterSpacing: 1 })
+        document.font('Helvetica').fontSize(11).fillColor('#b7c8bc')
+            .text('EVENT ADMISSION PASS', 48, 86, { characterSpacing: 1.2 })
+
+        document.font('Helvetica-Bold').fontSize(24).fillColor(colors.ink)
+            .text(eventTitle, 48, 172, { width: 500 })
+        document.font('Helvetica').fontSize(12).fillColor(colors.muted)
+            .text(`${eventDate}\n${venue}`, 48, 212, { width: 500, lineGap: 5 })
+
+        document.roundedRect(48, 290, 499, 250, 14).fillAndStroke(colors.white, colors.border)
+        drawLabel(document, 'Ticket code', 74, 320, 420)
+        document.font('Helvetica-Bold').fontSize(23).fillColor(colors.ink)
+            .text(ticketCode, 74, 342, { width: 420, characterSpacing: 1.5 })
+        document.moveTo(74, 384).lineTo(520, 384).lineWidth(1).strokeColor(colors.border).stroke()
+        drawLabel(document, 'Ticket type', 74, 407, 260)
+        document.font('Helvetica').fontSize(12).fillColor(colors.ink)
+            .text(ticketItems.map((item) => `${safeText(item.ticketTypeName, 'General admission')} × ${item.quantity || 1}`).join('\n'), 74, 428, { width: 260, lineGap: 5 })
+        drawLabel(document, 'Seats', 362, 407, 132)
+        document.font('Helvetica').fontSize(12).fillColor(colors.ink)
+            .text(seats, 362, 428, { width: 132, lineGap: 5 })
+
+        document.font('Helvetica').fontSize(10).fillColor(colors.muted)
+            .text('Present this ticket code at the event entrance. Keep this pass private.', 48, 580, { width: 499, align: 'center' })
+        document.end()
+    })
+}
+
+async function createTicketPdf(booking) {
+    try {
+        return await createDesignedTicketPdf(booking)
+    } catch (error) {
+        // Image embedding occasionally fails in a serverless runtime. A paid
+        // attendee must still receive a valid, printable admission ticket.
+        console.error('Designed ticket PDF failed; using the text-ticket fallback:', error.message)
+        return createFallbackTicketPdf(booking)
+    }
 }
 
 module.exports = { createTicketPdf }
