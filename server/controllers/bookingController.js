@@ -1,7 +1,8 @@
 const mongoose = require('mongoose')
 const Booking = require('../models/Booking')
 const Event = require('../models/Event')
-const { createTicketPdf, createMinimalTicketPdf } = require('../services/ticketPdfService')
+const { createResilientTicketPdf } = require('../services/ticketPdfService')
+const { sendBookingConfirmation } = require('../services/notificationService')
 
 function invalid(res, message) {
     return res.status(400).json({ success: false, message })
@@ -89,15 +90,7 @@ async function downloadBookingTicket(req, res) {
             return res.status(404).json({ success: false, message: 'Ticket not found' })
         }
         console.log(`Booking found, creating PDF for ticket code: ${booking.ticketCode}`)
-        let pdf
-        try {
-            pdf = await createTicketPdf(booking)
-        } catch (error) {
-            // A paid attendee must not lose access to a ticket because the
-            // decorated PDF renderer is unavailable in a serverless runtime.
-            console.error('Ticket PDF renderer failed; using minimal PDF:', error.stack || error.message)
-            pdf = createMinimalTicketPdf(booking)
-        }
+        const pdf = await createResilientTicketPdf(booking)
         console.log(`PDF created successfully, size: ${pdf.length} bytes`)
         res.setHeader('Content-Type', 'application/pdf')
         res.setHeader('Content-Disposition', `attachment; filename="eventora-ticket-${booking.ticketCode}.pdf"`)
@@ -106,6 +99,36 @@ async function downloadBookingTicket(req, res) {
         console.error('Failed to create ticket PDF:', error.message)
         console.error('Full error:', error)
         return res.status(500).json({ success: false, message: 'Unable to create ticket PDF', error: error.message })
+    }
+}
+
+async function resendBookingConfirmation(req, res) {
+    if (!mongoose.isValidObjectId(req.params.bookingId)) return invalid(res, 'Invalid booking ID')
+    try {
+        const booking = await Booking.findOne({
+            _id: req.params.bookingId,
+            user: req.auth.sub,
+            status: 'paid',
+        }).select('confirmationEmailSentAt confirmationEmailInProgressAt')
+        if (!booking) return res.status(404).json({ success: false, message: 'Paid ticket not found' })
+
+        if (booking.confirmationEmailSentAt && Date.now() - booking.confirmationEmailSentAt.getTime() < 60 * 1000) {
+            return res.status(429).json({ success: false, message: 'Please wait one minute before requesting another confirmation email' })
+        }
+
+        // Older versions could record a confirmation as sent even when SMTP
+        // was unavailable. Clearing the delivery markers lets the secure
+        // delivery claim send a real retry after SMTP is configured.
+        await Booking.updateOne(
+            { _id: booking._id, user: req.auth.sub, status: 'paid' },
+            { $unset: { confirmationEmailSentAt: 1, confirmationEmailInProgressAt: 1 } }
+        )
+        const sent = await sendBookingConfirmation(booking._id)
+        if (!sent) return res.status(503).json({ success: false, message: 'Unable to send the confirmation email. Please try again later.' })
+        return res.json({ success: true, message: 'Confirmation email sent' })
+    } catch (error) {
+        console.error('Failed to resend booking confirmation:', error.stack || error.message)
+        return res.status(500).json({ success: false, message: 'Unable to send the confirmation email' })
     }
 }
 
@@ -202,4 +225,4 @@ async function cancelBooking(req, res) {
     }
 }
 
-module.exports = { createBooking, getMyBookings, getBookingTicket, downloadBookingTicket, checkInTicket, cancelBooking }
+module.exports = { createBooking, getMyBookings, getBookingTicket, downloadBookingTicket, resendBookingConfirmation, checkInTicket, cancelBooking }

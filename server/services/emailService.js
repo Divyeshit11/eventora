@@ -1,7 +1,7 @@
 const nodemailer = require('nodemailer')
 const path = require('node:path')
 const fs = require('node:fs')
-const { createTicketPdf } = require('./ticketPdfService')
+const { createResilientTicketPdf } = require('./ticketPdfService')
 
 const logoPath = path.resolve(__dirname, '../assets/eventora-logo.png')
 let transporter
@@ -91,26 +91,18 @@ function eventDetails(event) {
 async function sendBookingConfirmationEmail(email, booking) {
     const event = eventDetails(booking.event)
     const ticketCode = String(booking.ticketCode || 'Available in your bookings')
-    
-    try {
-        const pdf = await createTicketPdf(booking)
-        await getTransporter().sendMail({
-            from: process.env.SMTP_FROM, to: email, subject: `Booking confirmed: ${event.title}`,
-            text: `Your booking is confirmed.\n\nEvent: ${event.title}\nDate: ${event.date}\nLocation: ${event.location}\nTicket type: ${booking.ticketTypeName || 'General admission'}\nTickets: ${booking.quantity}\nTicket code: ${ticketCode}\n\nYour downloadable ticket is attached to this email. Keep it for your records.`,
-            html: emailLayout(`<h1>Your booking is confirmed</h1><p><strong>${escapeHtml(event.title)}</strong></p><p>${escapeHtml(event.date)}<br>${escapeHtml(event.location)}</p><p>Ticket type: ${escapeHtml(booking.ticketTypeName || 'General admission')}<br>Tickets: ${booking.quantity}<br>Ticket code: <strong>${escapeHtml(ticketCode)}</strong></p><p>Your downloadable ticket is attached to this email. Keep it for your records.</p>`),
-            attachments: [
-                { filename: `eventora-ticket-${ticketCode}.pdf`, content: pdf, contentType: 'application/pdf', contentDisposition: 'attachment' },
-                inlineLogoAttachment(),
-            ].filter(Boolean),
-        })
-    } catch (error) {
-        console.error('Failed to send booking confirmation email:', error.message)
-        if (error.message.includes('SMTP') || error.message.includes('configured')) {
-            console.warn('SMTP not configured - email sending skipped. Configure SMTP_* environment variables to enable email delivery.')
-            return
-        }
-        throw error
-    }
+    const pdf = await createResilientTicketPdf(booking)
+    // Do not swallow SMTP errors here. The delivery service needs the error to
+    // keep the booking eligible for retry instead of falsely marking it sent.
+    await getTransporter().sendMail({
+        from: process.env.SMTP_FROM, to: email, subject: `Booking confirmed: ${event.title}`,
+        text: `Your booking is confirmed.\n\nEvent: ${event.title}\nDate: ${event.date}\nLocation: ${event.location}\nTicket type: ${booking.ticketTypeName || 'General admission'}\nTickets: ${booking.quantity}\nTicket code: ${ticketCode}\n\nYour downloadable ticket is attached to this email. Keep it for your records.`,
+        html: emailLayout(`<h1>Your booking is confirmed</h1><p><strong>${escapeHtml(event.title)}</strong></p><p>${escapeHtml(event.date)}<br>${escapeHtml(event.location)}</p><p>Ticket type: ${escapeHtml(booking.ticketTypeName || 'General admission')}<br>Tickets: ${booking.quantity}<br>Ticket code: <strong>${escapeHtml(ticketCode)}</strong></p><p>Your downloadable ticket is attached to this email. Keep it for your records.</p>`),
+        attachments: [
+            { filename: `eventora-ticket-${ticketCode}.pdf`, content: pdf, contentType: 'application/pdf', contentDisposition: 'attachment' },
+            inlineLogoAttachment(),
+        ].filter(Boolean),
+    })
 }
 
 async function sendEventReminderEmail(email, booking) {

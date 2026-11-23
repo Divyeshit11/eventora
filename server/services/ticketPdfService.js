@@ -347,4 +347,13 @@ function createMinimalTicketPdf(booking) {
     return Buffer.from(output, 'binary')
 }
 
-module.exports = { createTicketPdf, createMinimalTicketPdf }
+async function createResilientTicketPdf(booking) {
+    try {
+        return await createTicketPdf(booking)
+    } catch (error) {
+        console.error('Ticket PDF renderer failed; using minimal PDF:', error.message)
+        return createMinimalTicketPdf(booking)
+    }
+}
+
+module.exports = { createTicketPdf, createMinimalTicketPdf, createResilientTicketPdf }

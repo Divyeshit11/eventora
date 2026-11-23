@@ -6,7 +6,7 @@ import Footer from '../Components/layout/Footer'
 import PageHeader from '../Components/common/PageHeader'
 import Button from '../Components/common/Button'
 import Logo from '../Components/common/Logo'
-import { downloadBookingTicket, getBookingTicket } from '../services/eventService'
+import { downloadBookingTicket, getBookingTicket, resendBookingConfirmation } from '../services/eventService'
 
 function TicketPage() {
     const { bookingId } = useParams(); const [state, setState] = useState({ status: 'loading', ticket: null, qr: '', error: '' })
@@ -31,6 +31,15 @@ function TicketPage() {
                 }
             }
             setState((current) => ({ ...current, error: message }))
+        }
+    }
+    async function resendConfirmation() {
+        setState((current) => ({ ...current, error: '', resendStatus: 'loading', resendMessage: '' }))
+        try {
+            const response = await resendBookingConfirmation(bookingId)
+            setState((current) => ({ ...current, resendStatus: 'sent', resendMessage: response.message || 'Confirmation email sent.' }))
+        } catch (error) {
+            setState((current) => ({ ...current, resendStatus: 'failed', resendMessage: error.response?.data?.message || 'Unable to send confirmation email.' }))
         }
     }
     return (
@@ -137,6 +146,14 @@ function TicketPage() {
                                 </footer>
                             </article>
                             <Button onClick={downloadTicket} className="mt-5 w-full">Download PDF ticket</Button>
+                            <Button onClick={resendConfirmation} disabled={state.resendStatus === 'loading'} variant="secondary" className="mt-3 w-full">
+                                {state.resendStatus === 'loading' ? 'Sending confirmation email...' : 'Send ticket to my email'}
+                            </Button>
+                            {state.resendMessage && (
+                                <p className={`mt-3 text-center text-sm ${state.resendStatus === 'sent' ? 'text-emerald-300' : 'text-red-300'}`} role={state.resendStatus === 'failed' ? 'alert' : 'status'}>
+                                    {state.resendMessage}
+                                </p>
+                            )}
                         </>
                     )}
                     <Link to="/bookings" className="mt-6 inline-flex text-sm text-brand-300 transition hover:text-white">
