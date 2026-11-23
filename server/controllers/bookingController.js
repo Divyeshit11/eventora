@@ -82,15 +82,22 @@ async function getBookingTicket(req, res) {
 async function downloadBookingTicket(req, res) {
     if (!mongoose.isValidObjectId(req.params.bookingId)) return invalid(res, 'Invalid booking ID')
     try {
+        console.log(`Attempting to download ticket for booking ${req.params.bookingId}`)
         const booking = await Booking.findOne({ _id: req.params.bookingId, user: req.auth.sub, status: 'paid' }).populate('event', 'title location venueAddress venueContact date')
-        if (!booking) return res.status(404).json({ success: false, message: 'Ticket not found' })
+        if (!booking) {
+            console.warn(`Booking ${req.params.bookingId} not found or not paid`)
+            return res.status(404).json({ success: false, message: 'Ticket not found' })
+        }
+        console.log(`Booking found, creating PDF for ticket code: ${booking.ticketCode}`)
         const pdf = await createTicketPdf(booking)
+        console.log(`PDF created successfully, size: ${pdf.length} bytes`)
         res.setHeader('Content-Type', 'application/pdf')
         res.setHeader('Content-Disposition', `attachment; filename="eventora-ticket-${booking.ticketCode}.pdf"`)
         return res.send(pdf)
     } catch (error) {
         console.error('Failed to create ticket PDF:', error.message)
-        return res.status(500).json({ success: false, message: 'Unable to create ticket PDF' })
+        console.error('Full error:', error)
+        return res.status(500).json({ success: false, message: 'Unable to create ticket PDF', error: error.message })
     }
 }
 
