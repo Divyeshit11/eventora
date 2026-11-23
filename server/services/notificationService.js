@@ -16,15 +16,20 @@ async function deliver(bookingId, type) {
     const sentField = `${type}EmailSentAt`
     const progressField = `${type}EmailInProgressAt`
     const booking = await claimBookingDelivery(bookingId, type)
-    if (!booking?.user?.email || !booking.event) return false
+    if (!booking?.user?.email || !booking.event) {
+        console.warn(`Cannot send ${type} email for booking ${bookingId}: missing user email or event data`)
+        return false
+    }
     try {
         if (type === 'confirmation') await sendBookingConfirmationEmail(booking.user.email, booking)
         else await sendEventReminderEmail(booking.user.email, booking)
         await Booking.updateOne({ _id: booking._id, [progressField]: booking[progressField] }, { $set: { [sentField]: new Date() }, $unset: { [progressField]: 1 } })
+        console.log(`Successfully sent ${type} email for booking ${bookingId} to ${booking.user.email}`)
         return true
     } catch (error) {
         await Booking.updateOne({ _id: booking._id }, { $unset: { [progressField]: 1 } })
-        console.error(`Unable to send ${type} email for booking ${booking._id}:`, error.message)
+        console.error(`Unable to send ${type} email for booking ${bookingId}:`, error.message)
+        if (error.stack) console.error(error.stack)
         return false
     }
 }
