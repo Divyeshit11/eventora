@@ -2,7 +2,6 @@ const mongoose = require('mongoose')
 const Booking = require('../models/Booking')
 const Event = require('../models/Event')
 const { createResilientTicketPdf } = require('../services/ticketPdfService')
-const { sendBookingConfirmation } = require('../services/notificationService')
 
 function invalid(res, message) {
     return res.status(400).json({ success: false, message })
@@ -102,36 +101,6 @@ async function downloadBookingTicket(req, res) {
     }
 }
 
-async function resendBookingConfirmation(req, res) {
-    if (!mongoose.isValidObjectId(req.params.bookingId)) return invalid(res, 'Invalid booking ID')
-    try {
-        const booking = await Booking.findOne({
-            _id: req.params.bookingId,
-            user: req.auth.sub,
-            status: 'paid',
-        }).select('confirmationEmailSentAt confirmationEmailInProgressAt')
-        if (!booking) return res.status(404).json({ success: false, message: 'Paid ticket not found' })
-
-        if (booking.confirmationEmailSentAt && Date.now() - booking.confirmationEmailSentAt.getTime() < 60 * 1000) {
-            return res.status(429).json({ success: false, message: 'Please wait one minute before requesting another confirmation email' })
-        }
-
-        // Older versions could record a confirmation as sent even when SMTP
-        // was unavailable. Clearing the delivery markers lets the secure
-        // delivery claim send a real retry after SMTP is configured.
-        await Booking.updateOne(
-            { _id: booking._id, user: req.auth.sub, status: 'paid' },
-            { $unset: { confirmationEmailSentAt: 1, confirmationEmailInProgressAt: 1 } }
-        )
-        const sent = await sendBookingConfirmation(booking._id)
-        if (!sent) return res.status(503).json({ success: false, message: 'Unable to send the confirmation email. Please try again later.' })
-        return res.json({ success: true, message: 'Confirmation email sent' })
-    } catch (error) {
-        console.error('Failed to resend booking confirmation:', error.stack || error.message)
-        return res.status(500).json({ success: false, message: 'Unable to send the confirmation email' })
-    }
-}
-
 async function checkInTicket(req, res) {
     const ticketCode = String(req.body?.ticketCode || '').trim().toUpperCase()
     if (!/^EVT-[A-Z0-9-]+$/.test(ticketCode)) return invalid(res, 'Enter a valid ticket code')
@@ -225,4 +194,4 @@ async function cancelBooking(req, res) {
     }
 }
 
-module.exports = { createBooking, getMyBookings, getBookingTicket, downloadBookingTicket, resendBookingConfirmation, checkInTicket, cancelBooking }
+module.exports = { createBooking, getMyBookings, getBookingTicket, downloadBookingTicket, checkInTicket, cancelBooking }

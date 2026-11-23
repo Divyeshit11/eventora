@@ -183,11 +183,6 @@ export async function downloadBookingTicket(bookingId) {
     return response.data
 }
 
-export async function resendBookingConfirmation(bookingId) {
-    const response = await api.post(`/bookings/${bookingId}/resend-confirmation`)
-    return response.data
-}
-
 export async function checkInTicket(ticketCode) {
     const response = await api.post('/bookings/check-in', { ticketCode })
     return response.data
