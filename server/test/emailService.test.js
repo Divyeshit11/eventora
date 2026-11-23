@@ -117,7 +117,9 @@ test('sends booking confirmation with a downloadable PDF ticket attachment', asy
             '89504e470d0a1a0a'
         )
         const pdfText = sentMessage.attachments[0].content.toString('latin1')
-        assert.ok((pdfText.match(/\/Subtype \/Image/g) || []).length >= 2)
+        // The logo stays embedded as an image; the QR code is vector-drawn so
+        // it remains reliable in a Vercel serverless function.
+        assert.ok((pdfText.match(/\/Subtype \/Image/g) || []).length >= 1)
     } finally {
         nodemailer.createTransport = originalCreateTransport
         delete require.cache[servicePath]

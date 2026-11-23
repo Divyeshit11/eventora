@@ -41,9 +41,37 @@ function drawLabel(document, label, x, y, width) {
         .text(label.toUpperCase(), x, y, { width, characterSpacing: 0.9, lineBreak: false })
 }
 
+function drawQrCode(document, ticketCode, x, y, size) {
+    try {
+        // Drawing the QR modules directly into the PDF avoids a PNG/image
+        // embedding failure in serverless deployments. It remains fully
+        // scannable and looks the same in the printed admission pass.
+        const modules = QRCode.create(ticketCode, { errorCorrectionLevel: 'M' }).modules
+        const quietZone = 2
+        const cellSize = size / (modules.size + quietZone * 2)
+
+        document.save().fillColor('#000000')
+        for (let row = 0; row < modules.size; row += 1) {
+            for (let column = 0; column < modules.size; column += 1) {
+                if (modules.get(row, column)) {
+                    document.rect(
+                        x + (column + quietZone) * cellSize,
+                        y + (row + quietZone) * cellSize,
+                        cellSize + 0.05,
+                        cellSize + 0.05
+                    )
+                }
+            }
+        }
+        document.fill().restore()
+        return true
+    } catch (error) {
+        console.error('Ticket QR code could not be rendered:', error.message)
+        return false
+    }
+}
+
 async function createDesignedTicketPdf(booking) {
-    const qrDataUrl = await QRCode.toDataURL(booking.ticketCode, { margin: 1, width: 300 })
-    const qrImage = Buffer.from(qrDataUrl.split(',')[1], 'base64')
     const event = booking.event || {}
     
     // Read the optional logo before PDFKit starts drawing. Passing a verified
@@ -194,9 +222,9 @@ async function createDesignedTicketPdf(booking) {
         const qrX = seamX + (stubWidth - qrSize) / 2
         const qrY = cardY + 47
         document.roundedRect(qrX - 10, qrY - 10, qrSize + 20, qrSize + 20, 12).fill(colors.white)
-        document.image(qrImage, qrX, qrY, { width: qrSize, height: qrSize })
+        const hasQrCode = drawQrCode(document, ticketCode, qrX, qrY, qrSize)
         document.font('Helvetica-Bold').fontSize(8).fillColor(colors.green)
-            .text('SCAN AT EVENT ENTRY', seamX + 12, qrY + qrSize + 28, {
+            .text(hasQrCode ? 'SCAN AT EVENT ENTRY' : 'TICKET CODE', seamX + 12, qrY + qrSize + 28, {
                 width: stubWidth - 24,
                 align: 'center',
                 characterSpacing: 1,
@@ -209,7 +237,7 @@ async function createDesignedTicketPdf(booking) {
                 lineBreak: false,
             })
         document.font('Helvetica').fontSize(8).fillColor(colors.muted)
-            .text('Valid for one check-in', seamX + 12, qrY + qrSize + 68, {
+            .text(hasQrCode ? 'Valid for one check-in' : 'Show this code at entry', seamX + 12, qrY + qrSize + 68, {
                 width: stubWidth - 24,
                 align: 'center',
                 lineBreak: false,
