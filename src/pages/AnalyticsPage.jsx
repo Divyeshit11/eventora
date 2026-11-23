@@ -20,9 +20,9 @@ const formatMoney = (value) => new Intl.NumberFormat('en-IN', { style: 'currency
 const metricIcons = [WalletIcon, TicketIcon, ChartIcon, CalendarIcon]
 const metricAccents = [
     'from-emerald-500/25 to-teal-500/10 text-emerald-300 ring-emerald-400/30',
-    'from-brand-500/25 to-indigo-500/10 text-brand-300 ring-brand-400/30',
-    'from-purple-500/25 to-fuchsia-500/10 text-purple-300 ring-purple-400/30',
-    'from-amber-500/25 to-orange-500/10 text-amber-300 ring-amber-400/30',
+    'from-brand-500/25 to-brand-700/10 text-brand-300 ring-brand-400/30',
+    'from-accent-500/25 to-accent-600/10 text-accent-300 ring-accent-400/30',
+    'from-accent-500/25 to-accent-600/10 text-accent-300 ring-accent-400/30',
 ]
 
 function AnalyticsPage() {
@@ -42,7 +42,7 @@ function AnalyticsPage() {
         ['Revenue', formatMoney(overview.revenue), 'From paid bookings'],
         ['Paid tickets', formatNumber(overview.paidTickets), `${formatNumber(overview.paidBookings)} paid bookings`],
         ['Sell-through', `${overview.sellThroughRate}%`, `${formatNumber(overview.ticketsSold)} of ${formatNumber(overview.ticketCapacity)} tickets`],
-        ['Live events', formatNumber(overview.totalEvents), `${formatNumber(overview.pendingBookings)} pending bookings`],
+        ['Live events', formatNumber(overview.liveEvents), `${formatNumber(overview.totalEvents)} total events · ${formatNumber(overview.pendingBookings)} pending bookings`],
     ] : []
 
     return (
