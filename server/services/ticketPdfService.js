@@ -1,6 +1,7 @@
 const PDFDocument = require('pdfkit')
 const QRCode = require('qrcode')
 const path = require('node:path')
+const fs = require('node:fs')
 
 const logoPath = path.resolve(__dirname, '../assets/eventora-logo.png')
 const colors = {
@@ -44,6 +45,13 @@ async function createTicketPdf(booking) {
     const qrDataUrl = await QRCode.toDataURL(booking.ticketCode, { margin: 1, width: 300 })
     const qrImage = Buffer.from(qrDataUrl.split(',')[1], 'base64')
     const event = booking.event || {}
+    
+    // Check if logo file exists
+    const logoExists = fs.existsSync(logoPath)
+    if (!logoExists) {
+        console.warn('Logo file not found at:', logoPath, '- PDF will be generated without logo')
+    }
+    
     return new Promise((resolve, reject) => {
         const document = new PDFDocument({ size: 'A4', margin: 0, compress: true })
         const chunks = []
@@ -70,7 +78,11 @@ async function createTicketPdf(booking) {
 
         document.rect(0, 0, pageWidth, pageHeight).fill(colors.cream)
         document.rect(0, 0, pageWidth, 116).fill(colors.forest)
-        document.image(logoPath, margin, 31, { width: 205, height: 58, fit: [205, 58] })
+        
+        // Only add logo if file exists
+        if (logoExists) {
+            document.image(logoPath, margin, 31, { width: 205, height: 58, fit: [205, 58] })
+        }
         document.font('Helvetica-Bold').fontSize(9).fillColor(colors.cream)
             .text('YOUR EVENT PASS', pageWidth - margin - 150, 42, {
                 width: 150,

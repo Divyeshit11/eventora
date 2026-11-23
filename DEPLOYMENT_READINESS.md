@@ -24,6 +24,7 @@ and diff whitespace checks. This did not contact or change any external service.
 | Backend production configuration | Implemented, not hosted | [server/server.js](./server/server.js) checks production HTTPS CORS origins, JWT configuration, and proxy hop configuration. |
 | MongoDB Atlas | Not configured/verified | Set `MONGODB_URI` in the API host; create least-privilege access, restrict network access, and establish backups. No Atlas connection has been tested. |
 | API hosting | Configured for Vercel, not production-verified | Configure the Vercel project with required secrets and verify the serverless API health endpoint. |
+| SMTP email service | Not configured/verified | Set `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_FROM`, and `SMTP_SECURE` to enable booking confirmation emails with PDF ticket attachments. Without SMTP, emails will be skipped but PDF download will still work. |
 | CORS and HTTPS | Locally configured only | Set `CLIENT_URL` to the exact HTTPS Vercel origin. Verify browser preflight and API calls on the deployed domain. |
 | JWT/admin secrets | Examples only | Set a unique secret of at least 32 characters and bootstrap an administrator with a unique password of at least 12 characters in a secret manager. |
 | Proxy trust | Off by default | Enable only for a documented trusted proxy; set the verified `TRUST_PROXY_HOPS` value. |
@@ -37,7 +38,21 @@ Use the templates, never commit real environment files:
 - Backend: [server/.env.example](./server/.env.example), variables `PORT`,
   `MONGODB_URI`, `CLIENT_URL`, `JWT_SECRET`, `ADMIN_EMAIL`,
   `ADMIN_PASSWORD`, `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`,
-  `RAZORPAY_WEBHOOK_SECRET`, `TRUST_PROXY`, and `TRUST_PROXY_HOPS`.
+  `RAZORPAY_WEBHOOK_SECRET`, `TRUST_PROXY`, `TRUST_PROXY_HOPS`,
+  `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`,
+  `SMTP_FROM`, and `SMTP_SECURE`.
+
+**SMTP Configuration for Email Tickets:**
+To enable booking confirmation emails with PDF ticket attachments, configure these environment variables in your hosting provider:
+
+- `SMTP_HOST`: Your email provider's SMTP server (e.g., `smtp.gmail.com`, `smtp.sendgrid.net`)
+- `SMTP_PORT`: SMTP port (usually 587 for TLS, 465 for SSL)
+- `SMTP_USER`: SMTP username/email
+- `SMTP_PASSWORD`: SMTP password or app-specific password
+- `SMTP_FROM`: Sender email address (e.g., `noreply@yourdomain.com`)
+- `SMTP_SECURE`: `true` for SSL (port 465), `false` for TLS (port 587)
+
+**Note:** Without SMTP configuration, the app will still work but emails will be skipped. Users can still download PDF tickets from the "My Bookings" page.
 
 The checked credential/environment files are ignored and untracked. Their
 contents were not read or recorded in this document. Production secrets must be
