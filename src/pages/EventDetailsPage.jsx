@@ -199,7 +199,7 @@ function EventDetailPage() {
                 )}
 
                 {event && (
-                    <div className="mt-8 grid min-w-0 gap-10 lg:grid-cols-2 lg:items-start">
+                    <div className="mt-8 grid min-w-0 gap-10 xl:grid-cols-2 xl:items-start">
                         <Reveal className="min-w-0">
                             <EventImage
                                 src={event.image}
@@ -277,20 +277,20 @@ function EventDetailPage() {
                                     {ticketsRemaining > 0 ? `${ticketsRemaining} ticket${ticketsRemaining === 1 ? '' : 's'} remaining` : 'Sold out'}
                                 </p>
                                 {ticketTypes.length > 1 && <p className="mb-3 text-sm text-slate-400">Choose quantities for each ticket type. All selected types are paid together at checkout.</p>}
-                                <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                                <div className="mt-4 grid gap-3">
                                     {ticketTypes.map((type, index) => {
                                         const key = String(type._id || type.name)
                                         const remaining = Math.max(0, type.quantity - (type.sold || 0))
                                         const selectedQuantity = ticketQuantities[key] ?? (index === 0 ? Math.min(1, remaining) : 0)
                                         const maxQuantity = Math.min(remaining, 10 - totalQuantity + selectedQuantity)
                                         return (
-                                            <div key={key} className="card-surface grid gap-3 rounded-xl p-4 sm:flex sm:items-center sm:justify-between">
+                                            <div key={key} className="card-surface grid gap-4 rounded-xl p-4">
                                                 <div className="min-w-0">
                                                     <p className="text-xs font-semibold uppercase tracking-wider text-brand-200">Ticket category</p>
                                                     <p className="mt-1 truncate font-semibold text-white">{type.name}</p>
                                                     <p className="mt-1 text-sm text-slate-400">₹{type.price} · {remaining} left</p>
                                                 </div>
-                                                <div className="flex items-center justify-between gap-3 text-sm font-medium text-slate-200 sm:justify-start">
+                                                <div className="flex flex-wrap items-center justify-between gap-3 text-sm font-medium text-slate-200">
                                                     <span>Quantity</span>
                                                     <div className="ticket-quantity-stepper" role="group" aria-label={`${type.name} ticket quantity`}>
                                                         <button
