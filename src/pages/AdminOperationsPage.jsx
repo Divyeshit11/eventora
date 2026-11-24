@@ -95,6 +95,14 @@ function AdminOperationsPage() {
             {state.status === 'loading' && <p className="py-12 text-center text-slate-400" role="status">Loading operations...</p>}
             {state.status !== 'loading' && <>
                 <section className="mt-10">
+                    <h2 className="text-2xl font-semibold">Users and organizers ({state.users.length})</h2>
+                    <div className="mt-4 overflow-x-auto rounded-2xl border border-surface-border">
+                        <table className="w-full min-w-[36rem] text-left text-sm"><thead className="bg-surface-card text-slate-400"><tr><th className="p-4">Email</th><th className="p-4">Role</th><th className="p-4">Organizer access</th></tr></thead>
+                            <tbody>{state.users.filter((user) => user.role !== 'admin').map((user) => <tr key={user._id} className="border-t border-surface-border"><td className="p-4">{user.email}</td><td className="p-4 capitalize">{user.role}</td><td className="p-4"><select aria-label={`Role for ${user.email}`} value={user.role} disabled={Boolean(busyId)} onChange={(change) => changeRole(user, change.target.value)} className="rounded-lg border border-surface-border bg-surface px-3 py-2 text-white"><option value="user">Customer</option><option value="organizer">Organizer</option></select></td></tr>)}</tbody>
+                        </table>
+                    </div>
+                </section>
+                <section className="mt-10">
                     <h2 className="text-2xl font-semibold">Event approval and moderation ({state.events.length})</h2>
                     {state.events.length === 0 ? <p className="mt-4 rounded-xl border border-surface-border p-5 text-slate-400">No events are waiting for approval.</p> :
                         <div className="mt-4 space-y-4">{state.events.map((event) => <article key={event._id} className="card-surface card-hover rounded-2xl p-5">
@@ -102,14 +110,6 @@ function AdminOperationsPage() {
                             <label className="mt-4 grid gap-2 text-sm text-slate-300">Moderation note (required when rejecting)<textarea value={notes[event._id] || ''} onChange={(change) => setNotes((current) => ({ ...current, [event._id]: change.target.value }))} maxLength="1000" rows="2" className="rounded-lg border border-surface-border bg-surface px-3 py-2 text-white" /></label>
                             <div className="mt-4 flex flex-wrap gap-3">{event.status !== 'published' && <button type="button" disabled={Boolean(busyId)} onClick={() => reviewEvent(event, 'published')} className="rounded-lg bg-emerald-700 px-4 py-2 text-sm font-semibold disabled:opacity-50">{event.status === 'pending_approval' ? 'Approve and publish' : 'Publish event'}</button>}{event.status === 'published' && <button type="button" disabled={Boolean(busyId)} onClick={() => reviewEvent(event, 'suspended')} className="rounded-lg border border-amber-700 px-4 py-2 text-sm font-semibold text-amber-300 disabled:opacity-50">Suspend event</button>}{event.status === 'pending_approval' && <button type="button" disabled={Boolean(busyId) || !notes[event._id]?.trim()} onClick={() => reviewEvent(event, 'rejected')} className="rounded-lg border border-red-700 px-4 py-2 text-sm font-semibold text-red-300 disabled:opacity-50">Reject</button>}</div>
                         </article>)}</div>}
-                </section>
-                <section className="mt-10">
-                    <h2 className="text-2xl font-semibold">Users and organizers ({state.users.length})</h2>
-                    <div className="mt-4 overflow-x-auto rounded-2xl border border-surface-border">
-                        <table className="w-full min-w-[36rem] text-left text-sm"><thead className="bg-surface-card text-slate-400"><tr><th className="p-4">Email</th><th className="p-4">Role</th><th className="p-4">Organizer access</th></tr></thead>
-                            <tbody>{state.users.filter((user) => user.role !== 'admin').map((user) => <tr key={user._id} className="border-t border-surface-border"><td className="p-4">{user.email}</td><td className="p-4 capitalize">{user.role}</td><td className="p-4"><select aria-label={`Role for ${user.email}`} value={user.role} disabled={Boolean(busyId)} onChange={(change) => changeRole(user, change.target.value)} className="rounded-lg border border-surface-border bg-surface px-3 py-2 text-white"><option value="user">Customer</option><option value="organizer">Organizer</option></select></td></tr>)}</tbody>
-                        </table>
-                    </div>
                 </section>
             </>}
         </main><Footer />

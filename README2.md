@@ -123,3 +123,20 @@ or CSV imports can succeed.
   checks to run against the deployed services.
 - [DEVELOPMENT_PROGRESS_LOG.md](./DEVELOPMENT_PROGRESS_LOG.md) — dated
   consolidated progress.
+
+
+
+Project Overview:
+****************
+
+1.Tamaro Project Su Che?
+Ans. Eventora full-stack event discovery ane ticket-booking platform che. user events shodhi, ticket/seats pasand kari, Razorpay dwara payment kare ane pdf ticket tatha confirmation email melve che. organizer events manage kare che ane admin moderation, users, analytics sambhale che.
+
+2.kyo tech stack vaparyo che?
+Ans. Frontend mate React, vite, React Router, Redux Toolkit ane Tailwind CSS. Backend mate Node.js,Express, MongoDB Atlas, Mongoose, JWT bcryptjs,Razorpay,Nodemailer,PDFkit ane QRcode vapraya che. Deployment vercel par che.
+
+3.Frontend ane Backend Alag Sha mate Rakhya?
+Ans. React UI,Routing ane client side state sambhale che. Express authentication, business rules, payments ane database operations sambhale che. aa separation maintainability. Testing ane scalability mate upyogi che.
+
+4.Mukhya user roles kya che?
+tran role che: User, organizer ane admin user tickets book kare che, organizer potana events manage kare che ane admin aproval moderation tatha analytics kareche
